@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Weight &amp; Waist Tracker</title>
+
+<!-- PWA: installable "Add to Home Screen" support -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2E5C42">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wt Tracker">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+  :root{
+    --bg:#F6F4EE;
+    --paper:#FFFFFF;
+    --ink:#20281F;
+    --ink-soft:#5B665A;
+    --ink-faint:#93998F;
+    --line:#DAD6C8;
+    --accent:#2E5C42;
+    --accent-soft:#DCE7DC;
+    --accent-pale:#EEF3EB;
+    --warn:#A8462F;
+    --warn-soft:#F3E1DB;
+    --highlight:#8A6A1D;
+    --highlight-soft:#F1E9D2;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
+  body{-webkit-tap-highlight-color:transparent; transition:background 0.25s ease, color 0.25s ease;}
+  button, input, select{font-family:var(--sans);-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+
+  #app{max-width:1000px;margin:0 auto;padding:0 20px 80px;}
+  @media (max-width:480px){ #app{padding:0 12px 70px;} }
+
+  header.top{
+    display:flex;align-items:flex-start;justify-content:space-between;
+    padding:24px 0 16px; border-bottom:1px solid var(--line);
+    flex-wrap:wrap; gap:14px;
+  }
+  header.top h1{
+    font-family:var(--serif); font-weight:400; font-size:26px; margin:0;
+    letter-spacing:0.2px;
+  }
+  header.top .tagline{color:var(--ink-soft); font-size:12.5px; margin-top:4px;}
+  header.top .today{font-size:12.5px; color:var(--ink-faint); text-align:right;}
+
+  .theme-quick{display:flex; align-items:center; gap:6px; margin-top:8px;}
+  .theme-quick button{
+    width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;
+    box-shadow:0 0 0 1px var(--line) inset;
+  }
+  .theme-quick button.active{border-color:var(--ink);}
+
+  nav.tabs{
+    display:flex; gap:2px; margin:16px 0 24px; border-bottom:1px solid var(--line);
+    overflow-x:auto; -ms-overflow-style:none; scrollbar-width:none;
+  }
+  nav.tabs::-webkit-scrollbar{display:none;}
+  nav.tabs button{
+    background:none;border:none;padding:10px 15px;font-size:14px;color:var(--ink-soft);
+    cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0;
+  }
+  nav.tabs button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+  nav.tabs button:hover{color:var(--accent);}
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* ---------- generic building blocks ---------- */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  @media (max-width:760px){ .grid2,.grid3{grid-template-columns:1fr;} }
+
+  section.block{
+    border:1px solid var(--line); background:var(--paper); border-radius:8px;
+    padding:20px 22px; margin-bottom:18px;
+  }
+  @media (max-width:480px){ section.block{padding:16px 14px; border-radius:6px;} }
+  section.block h2{
+    font-family:var(--serif); font-weight:400; font-size:18px; margin:0 0 4px; color:var(--ink);
+  }
+  section.block .sub{font-size:12.5px;color:var(--ink-faint);margin-bottom:16px;}
+
+  .stat-row{display:flex; align-items:flex-end; gap:22px; flex-wrap:wrap;}
+  .stat{min-width:100px;}
+  .stat .num{font-family:var(--serif); font-size:32px; line-height:1; color:var(--ink);}
+  .stat .num.accent{color:var(--accent);}
+  .stat .lbl{font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.06em; margin-top:6px;}
+
+  .ruler{margin-top:16px;}
+  .ruler .labels{display:flex; justify-content:space-between; font-size:12px; color:var(--ink-soft); margin-bottom:6px;}
+  .ruler .track{position:relative; height:10px; border-radius:5px; background:var(--accent-pale); overflow:visible;}
+  .ruler .fill{position:absolute; top:0; left:0; height:100%; border-radius:5px; background:var(--accent); transition:width 0.3s ease;}
+  .ruler .pct{font-size:12.5px; color:var(--ink-soft); margin-top:8px;}
+  .ruler .secondary{font-size:11.5px; color:var(--ink-faint); margin-top:6px;}
+
+  table.data{width:100%; border-collapse:collapse; font-size:13px;}
+  table.data th{text-align:left; font-weight:600; color:var(--ink-soft); font-size:11px; text-transform:uppercase; letter-spacing:0.04em; padding:6px 8px; border-bottom:1px solid var(--line);}
+  table.data td{padding:7px 8px; border-bottom:1px solid var(--line); white-space:nowrap; color:var(--ink);}
+  table.data tr:last-child td{border-bottom:none;}
+  table.data tbody tr:hover{background:var(--accent-pale);}
+
+  .btn{
+    background:var(--accent); color:#fff; border:none; padding:9px 16px; border-radius:6px;
+    font-size:13.5px; cursor:pointer;
+  }
+  .btn:hover{filter:brightness(0.92);}
+  .btn.secondary{background:none; color:var(--accent); border:1px solid var(--accent);}
+  .btn.secondary:hover{background:var(--accent-pale);}
+  .btn.ghost{background:none;color:var(--ink-soft);border:1px solid var(--line);}
+  .btn.ghost:hover{border-color:var(--ink-faint);}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+  input[type=number], input[type=text], input[type=date], select{
+    padding:8px 9px; border:1px solid var(--line); border-radius:5px; font-size:14px;
+    background:var(--paper); color:var(--ink); width:100%;
+  }
+  input:focus, select:focus{outline:2px solid var(--accent-soft); border-color:var(--accent);}
+  label.field{display:block; font-size:11px; color:var(--ink-soft); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.04em;}
+
+  @media (max-width:480px){
+    input[type=number], input[type=text], select{font-size:16px;} /* prevents iOS auto-zoom */
+  }
+
+  /* ---------- week view ---------- */
+  .week-nav{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap;}
+  .week-nav .center{font-family:var(--serif); font-size:19px; text-align:center;}
+  .week-nav .center .date{display:block; font-size:12px; color:var(--ink-faint); font-family:var(--sans);}
+
+  .day-cols{display:grid; grid-template-columns:140px repeat(7,minmax(72px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:12.5px; min-width:640px;}
+  .day-cols > div{background:var(--paper); padding:8px 6px;}
+  .day-cols .rowhead{background:var(--accent-pale); font-weight:600; display:flex; align-items:center; color:var(--ink);}
+  .day-cols .colhead{background:var(--accent-pale); text-align:center; font-weight:600; color:var(--ink);}
+  .day-cols .colhead .d{display:block;font-size:11px;color:var(--ink-faint);font-weight:400;}
+  .day-cols .quota{color:var(--ink-faint); font-size:11px; font-weight:400;}
+  .day-cols input[type=number]{padding:5px; text-align:center; font-size:13px;}
+  .day-cols .remaining{text-align:center; font-size:12px; padding-top:8px; color:var(--ink-soft);}
+  .remaining.over{color:var(--warn); font-weight:600;}
+  .remaining.ok{color:var(--accent);}
+  .day-cols .cat-indulgence{background:var(--highlight-soft);}
+  .day-cols .rowhead.cat-indulgence, .day-cols .colhead{color:var(--ink);}
+
+  .week-meta{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px;}
+  @media (max-width:640px){ .week-meta{grid-template-columns:1fr 1fr;} }
+  @media (max-width:420px){ .week-meta{grid-template-columns:1fr;} }
+
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:6px; font-size:13px;
+    opacity:0; pointer-events:none; transition:opacity 0.2s; max-width:90vw; text-align:center;
+  }
+  .toast.show{opacity:1;}
+
+  .settings-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:14px 20px;}
+  @media (max-width:640px){ .settings-grid{grid-template-columns:1fr;} }
+  .quota-row{display:grid; grid-template-columns:1.4fr 0.8fr; gap:10px; align-items:center; padding:6px 0;}
+
+  .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft); margin-top:10px;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .swatch{width:10px;height:10px;border-radius:2px;display:inline-block;}
+
+  .empty-note{color:var(--ink-faint); font-size:13px; font-style:italic;}
+
+  footer.note{font-size:11.5px; color:var(--ink-faint); text-align:center; margin-top:30px; line-height:1.6;}
+
+  /* ---------- theme picker (Settings) ---------- */
+  .theme-groups{display:flex; flex-direction:column; gap:18px;}
+  .theme-group-label{font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-faint); margin-bottom:8px;}
+  .theme-cards{display:flex; gap:12px; flex-wrap:wrap;}
+  .theme-card{
+    border:1.5px solid var(--line); border-radius:8px; padding:10px 12px; cursor:pointer;
+    display:flex; align-items:center; gap:10px; background:var(--paper); min-width:150px;
+    position:relative;
+  }
+  .theme-card.active{border-color:var(--accent);}
+  .theme-card .dots{display:flex; gap:3px;}
+  .theme-card .dots span{width:14px;height:14px;border-radius:50%;display:inline-block;}
+  .theme-card .name{font-size:13px; color:var(--ink);}
+  .theme-card .check{position:absolute; top:6px; right:8px; font-size:12px; color:var(--accent);}
+
+  /* ---------- Today view ---------- */
+  .today-header{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;}
+  .today-header h2{font-family:var(--serif); font-weight:400; font-size:22px; margin:0; color:var(--ink);}
+  .today-header .sub-date{font-size:12.5px; color:var(--ink-faint);}
+  .today-banner{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    background:var(--highlight-soft); border:1px solid var(--line); border-radius:8px;
+    padding:12px 16px; margin-bottom:16px; font-size:13px; color:var(--ink);
+  }
+  .today-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media (max-width:700px){ .today-grid{grid-template-columns:1fr;} }
+
+  .today-card{
+    border:1px solid var(--line); background:var(--paper); border-radius:10px; padding:16px 16px 12px;
+  }
+  .today-card-cumulative{
+    border-color:var(--highlight); box-shadow:inset 0 0 0 1px var(--highlight-soft);
+  }
+  .today-card-head{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px;}
+  .today-cat-name{font-size:14.5px; font-weight:600; color:var(--ink);}
+  .today-cat-name .quota-note{display:block; font-size:11px; font-weight:400; color:var(--ink-faint); margin-top:2px;}
+  .today-status-pill{
+    font-size:11px; font-weight:600; padding:4px 10px; border-radius:20px; white-space:nowrap;
+    background:var(--line); color:var(--ink-soft);
+  }
+  .today-status-pill.status-under{background:var(--accent-pale); color:var(--accent);}
+  .today-status-pill.status-near{background:var(--highlight-soft); color:var(--highlight);}
+  .today-status-pill.status-target{background:var(--accent); color:var(--paper);}
+  .today-status-pill.status-over{background:var(--warn-soft); color:var(--warn);}
+
+  .today-value-row{display:flex; align-items:center; justify-content:center; gap:18px; margin-bottom:14px;}
+  .today-value{font-family:var(--serif); font-size:34px; min-width:64px; text-align:center; color:var(--ink);}
+  .stepper{
+    width:42px; height:42px; border-radius:50%; border:1.5px solid var(--line); background:var(--paper);
+    font-size:20px; line-height:1; color:var(--ink); cursor:pointer; flex-shrink:0;
+  }
+  .stepper:hover{border-color:var(--accent); color:var(--accent);}
+  .stepper:active{transform:scale(0.94);}
+
+  .slider-wrap{height:14px; border-radius:7px; position:relative; margin-bottom:4px;}
+  input[type=range].today-slider{
+    -webkit-appearance:none; appearance:none; width:100%; height:14px; margin:0; background:transparent;
+    position:relative; display:block; cursor:pointer;
+  }
+  input[type=range].today-slider::-webkit-slider-runnable-track{background:transparent; height:14px; border-radius:7px;}
+  input[type=range].today-slider::-moz-range-track{background:transparent; height:14px; border-radius:7px;}
+  input[type=range].today-slider::-webkit-slider-thumb{
+    -webkit-appearance:none; width:24px; height:24px; border-radius:50%;
+    background:var(--paper); border:3px solid var(--ink); margin-top:-5px; cursor:pointer;
+    box-shadow:0 1px 3px rgba(0,0,0,0.3);
+  }
+  input[type=range].today-slider::-moz-range-thumb{
+    width:24px; height:24px; border-radius:50%; background:var(--paper); border:3px solid var(--ink);
+    cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.3);
+  }
+  .today-sub{font-size:12px; color:var(--ink-soft); text-align:center; margin-top:4px;}
+  .clear-btn{
+    display:block; margin:6px auto 0; background:none; border:none; color:var(--ink-faint);
+    font-size:11px; text-decoration:underline; cursor:pointer; padding:4px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header class="top">
+    <div>
+      <h1>Weight &amp; Waist Tracker</h1>
+      <div class="tagline">Based on the CSIRO Total Wellbeing Diet method</div>
+      <div class="theme-quick" id="themeQuick"></div>
+    </div>
+    <div class="today" id="todayLabel"></div>
+  </header>
+
+  <nav class="tabs">
+    <button data-view="dash" class="active">Dashboard</button>
+    <button data-view="today">Today</button>
+    <button data-view="week">This Week</button>
+    <button data-view="history">Log Book</button>
+    <button data-view="settings">Settings</button>
+  </nav>
+
+  <!-- ================= DASHBOARD ================= -->
+  <div class="view active" id="view-dash"></div>
+
+  <!-- ================= TODAY ================= -->
+  <div class="view" id="view-today"></div>
+
+  <!-- ================= WEEK ================= -->
+  <div class="view" id="view-week"></div>
+
+  <!-- ================= HISTORY ================= -->
+  <div class="view" id="view-history"></div>
+
+  <!-- ================= SETTINGS ================= -->
+  <div class="view" id="view-settings"></div>
+
+  <footer class="note">
+    Data is stored only in this browser (localStorage). Use Settings to export a backup.
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   CONSTANTS — mirrors the Reference tab of the spreadsheet
+   ========================================================================= */
+const CATEGORIES = [
+  { key:'protein',    label:'Protein',            quota:4,    unit:'One unit = 100g raw meat or 2 eggs' },
+  { key:'bread',      label:'Bread/Pasta/Rice',   quota:2,    unit:'One unit = 1 slice bread, 2 Ryvita, 150g potato, 1/3 cup rice/noodles, 1/2 cup pasta, 1/3 cup baked/kidney beans' },
+  { key:'cereal',     label:'Cereal',             quota:1.25, unit:'One unit = 40g high-fibre cereal, 1 Weet-Bix + 1/2 cup All-Bran, 40g rolled oats, 1 slice toast' },
+  { key:'fruit',      label:'Fruit',              quota:2,    unit:'One unit = 150g fresh/tinned fruit, 150ml juice, 30g dried fruit' },
+  { key:'dairy',      label:'Dairy',              quota:3,    unit:'One unit = 250ml low-fat milk, 200g yoghurt, 200g custard, 25g full-fat cheese, 50g reduced-fat cheese' },
+  { key:'veg',        label:'Vegetables',         quota:2,    unit:'One unit = 1 cup cooked vegetables' },
+  { key:'salad',      label:'Salad',              quota:0.5,  unit:'One unit = 1/2 cup uncooked vegetables' },
+  { key:'fat',        label:'Fats & Oils',        quota:3,    unit:'One unit = 3 tsp margarine, 6 tsp light margarine, 60g avocado, 20g nuts/seeds' },
+  { key:'indulgence', label:'Indulgence',         quota:9,    unit:'One unit = 150ml wine, 1 mid-strength beer, or 450kJ. 1.5 units for a full-strength beer.', cumulative:true }
+];
+const ACTIVITY_FACTORS = {
+  'Sedentary': 1.2,
+  'Lightly Active': 1.375,
+  'Moderately Active': 1.55,
+  'Very Active': 1.725,
+  'Extremely Active': 1.9
+};
+const ACTIVITY_ORDER = ['Sedentary','Lightly Active','Moderately Active','Very Active','Extremely Active'];
+const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const TOTAL_WEEKS = 69;
+const STORAGE_KEY = 'weightTrackerData_v1';
+const WAIST_HEIGHT_GOAL_PCT = 50; /* the "keep your waist under half your height" target */
+
+/* BMI band thresholds (clinical standard, as used in the source workbook) */
+const BMI_UNDER = 18.5, BMI_NORMAL = 24.9, BMI_OVER = 29.9, BMI_OBESE = 35;
+
+/* Waist-to-height ratio (WHtR) guideline bands */
+const WHTR_LOW = 0.4, WHTR_HEALTHY_MAX = 0.5, WHTR_ELEVATED_MAX = 0.6;
+const WHTR_ZONE_LABELS = ['Too slender','Healthy range','Elevated risk','Higher risk'];
+
+/* =========================================================================
+   COLOUR THEMES
+   ========================================================================= */
+const THEMES = {
+  meadow:   { label:'Meadow',   group:'Light', bg:'#F6F4EE', paper:'#FFFFFF', ink:'#20281F', inkSoft:'#5B665A', inkFaint:'#93998F', line:'#DAD6C8', accent:'#2E5C42', accentSoft:'#DCE7DC', accentPale:'#EEF3EB', warn:'#A8462F', warnSoft:'#F3E1DB', highlight:'#8A6A1D', highlightSoft:'#F1E9D2' },
+  sunset:   { label:'Sunset',   group:'Light', bg:'#FBF2EA', paper:'#FFFFFF', ink:'#3A2418', inkSoft:'#7C5C46', inkFaint:'#B4917A', line:'#EBD9C6', accent:'#D65B2A', accentSoft:'#F8E0CE', accentPale:'#FCEEE3', warn:'#B23A48', warnSoft:'#F6DEE0', highlight:'#2E6E62', highlightSoft:'#DDEDE9' },
+  ocean:    { label:'Ocean',    group:'Light', bg:'#EFF6F8', paper:'#FFFFFF', ink:'#0E2733', inkSoft:'#3D6373', inkFaint:'#89A9B3', line:'#CFE3E8', accent:'#0E7AA6', accentSoft:'#D2E9F0', accentPale:'#E9F4F7', warn:'#C1553B', warnSoft:'#F5DED7', highlight:'#B98A1E', highlightSoft:'#F3E7CB' },
+  midnight: { label:'Midnight', group:'Dark',  bg:'#111417', paper:'#181C20', ink:'#EDEFEA', inkSoft:'#A9B0AC', inkFaint:'#6E7672', line:'#2B3136', accent:'#45D6A6', accentSoft:'#1B3A30', accentPale:'#152420', warn:'#FF7A66', warnSoft:'#3A211D', highlight:'#F2C14E', highlightSoft:'#39301A' },
+  berry:    { label:'Berry',    group:'Dark',  bg:'#17111A', paper:'#211826', ink:'#F3E9F6', inkSoft:'#BA9FBF', inkFaint:'#7E6B84', line:'#362640', accent:'#EA5FA3', accentSoft:'#3B1E32', accentPale:'#261622', warn:'#FF8266', warnSoft:'#3B2318', highlight:'#F2C14E', highlightSoft:'#342A17' },
+  spruce:   { label:'Spruce',   group:'Dark',  bg:'#0F1613', paper:'#161F1B', ink:'#E7F0EA', inkSoft:'#9CB0A5', inkFaint:'#5F7369', line:'#233029', accent:'#5FD3A2', accentSoft:'#1B3327', accentPale:'#132420', warn:'#FF8B6B', warnSoft:'#38251E', highlight:'#E8C25E', highlightSoft:'#332C18' }
+};
+const THEME_ORDER = ['meadow','sunset','ocean','midnight','berry','spruce'];
+
+function applyTheme(key){
+  const t = THEMES[key] || THEMES.meadow;
+  const root = document.documentElement.style;
+  root.setProperty('--bg', t.bg);
+  root.setProperty('--paper', t.paper);
+  root.setProperty('--ink', t.ink);
+  root.setProperty('--ink-soft', t.inkSoft);
+  root.setProperty('--ink-faint', t.inkFaint);
+  root.setProperty('--line', t.line);
+  root.setProperty('--accent', t.accent);
+  root.setProperty('--accent-soft', t.accentSoft);
+  root.setProperty('--accent-pale', t.accentPale);
+  root.setProperty('--warn', t.warn);
+  root.setProperty('--warn-soft', t.warnSoft);
+  root.setProperty('--highlight', t.highlight);
+  root.setProperty('--highlight-soft', t.highlightSoft);
+  if(STATE){ STATE.settings.theme = key; saveState(); }
+}
+function themeVar(name){ return getComputedStyle(document.documentElement).getPropertyValue('--'+name).trim(); }
+
+function renderThemeQuick(){
+  const wrap = document.getElementById('themeQuick');
+  wrap.innerHTML = THEME_ORDER.map(k=>{
+    const t = THEMES[k];
+    const active = STATE.settings.theme===k ? 'active' : '';
+    return `<button class="${active}" data-theme="${k}" title="${t.label}" style="background:${t.accent}"></button>`;
+  }).join('');
+  wrap.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      applyTheme(b.dataset.theme);
+      renderThemeQuick();
+      renderAll();
+    });
+  });
+}
+
+/* =========================================================================
+   SEED DATA — weeks 1-4 are the real recorded values from the uploaded
+   spreadsheet. Weeks 5-69 start blank, ready to fill in.
+   ========================================================================= */
+const SEED_WEEKS_RAW = [
+  { startDate:'2026-08-17', startWeight:96.5, startWaist:110, activity:'Sedentary', days:[
+    {protein:4,   bread:2, cereal:1,    fruit:2, dairy:2, veg:2, salad:0.5, fat:3, indulgence:1},
+    {protein:3.5, bread:2, cereal:1,    fruit:2, dairy:3, veg:2, salad:1,   fat:3, indulgence:0},
+    {protein:3.5, bread:3, cereal:1.25, fruit:1, dairy:2, veg:2, salad:0.5, fat:2, indulgence:2},
+    {protein:1.5, bread:2, cereal:1,    fruit:2, dairy:2, veg:2, salad:0.5, fat:2, indulgence:0},
+    {protein:3,   bread:2, cereal:1,    fruit:2, dairy:3, veg:2, salad:0.5, fat:2, indulgence:2},
+    {protein:3,   bread:2, cereal:1.25, fruit:2, dairy:2, veg:2, salad:0.5, fat:2, indulgence:2},
+    {protein:2,   bread:2, cereal:1.25, fruit:2, dairy:1, veg:1, salad:null,fat:2, indulgence:2}
+  ]},
+  { startDate:'2026-08-24', startWeight:94.8, startWaist:109, activity:'Sedentary', days:[
+    {protein:4,   bread:2,   cereal:1,    fruit:2, dairy:2, veg:2,   salad:0,   fat:2, indulgence:0},
+    {protein:3.5, bread:2,   cereal:1,    fruit:2, dairy:3, veg:2,   salad:2,   fat:2, indulgence:3},
+    {protein:1.5, bread:null,cereal:1.25, fruit:1, dairy:2, veg:0.5, salad:0.5, fat:3, indulgence:0},
+    {protein:3.5, bread:2,   cereal:1.25, fruit:2, dairy:3, veg:2,   salad:1,   fat:3, indulgence:0},
+    {protein:4,   bread:2,   cereal:1,    fruit:2, dairy:3, veg:2,   salad:0.5, fat:3, indulgence:0},
+    {protein:4.5, bread:3,   cereal:1.25, fruit:2, dairy:1, veg:1.5, salad:0.5, fat:3, indulgence:0},
+    {protein:5,   bread:2,   cereal:1.25, fruit:2, dairy:3, veg:1,   salad:0,   fat:3, indulgence:12}
+  ]},
+  { startDate:'2026-08-31', startWeight:94.6, startWaist:109, activity:'Sedentary', days:[
+    {protein:3,   bread:0, cereal:1,    fruit:2, dairy:3, veg:2, salad:0,   fat:3, indulgence:0},
+    {protein:3,   bread:2, cereal:1,    fruit:2, dairy:3, veg:2, salad:0.5, fat:2, indulgence:2},
+    {protein:4,   bread:2, cereal:1,    fruit:2, dairy:4, veg:2, salad:0.5, fat:2, indulgence:0},
+    {protein:3.5, bread:2, cereal:1.25, fruit:2, dairy:3, veg:2, salad:0.5, fat:2, indulgence:1},
+    {protein:5.5, bread:1, cereal:1,    fruit:1, dairy:3, veg:2, salad:1,   fat:2, indulgence:0},
+    {protein:2,   bread:2, cereal:1.25, fruit:1, dairy:3, veg:1, salad:0.5, fat:1, indulgence:4.5},
+    {protein:4,   bread:3, cereal:null, fruit:1, dairy:3, veg:1, salad:0.5, fat:3, indulgence:5}
+  ]},
+  { startDate:'2026-09-07', startWeight:94.2, startWaist:109, activity:'Sedentary', days:[
+    {protein:3,   bread:2,    cereal:1,    fruit:2, dairy:2,    veg:2,   salad:0.5, fat:1, indulgence:0},
+    {protein:4,   bread:2,    cereal:1,    fruit:2, dairy:3,    veg:2,   salad:0.5, fat:1, indulgence:0},
+    {protein:4,   bread:2,    cereal:1,    fruit:2, dairy:3,    veg:1.5, salad:0.5, fat:2, indulgence:1},
+    {protein:4.5, bread:3,    cereal:1,    fruit:2, dairy:3,    veg:2,   salad:1,   fat:4, indulgence:1},
+    {protein:3.5, bread:2,    cereal:1,    fruit:2, dairy:3,    veg:2,   salad:0.5, fat:2, indulgence:0},
+    {protein:4,   bread:3,    cereal:1.25, fruit:2, dairy:3,    veg:2,   salad:0.5, fat:3, indulgence:6},
+    {protein:0.5, bread:null, cereal:1,    fruit:1, dairy:null, veg:null,salad:null,fat:1, indulgence:null}
+  ]}
+];
+
+/* =========================================================================
+   STATE
+   ========================================================================= */
+let STATE = null;
+
+function addDaysISO(iso, n){
+  const d = new Date(iso+'T00:00:00');
+  d.setDate(d.getDate()+n);
+  return localISODate(d); /* local date parts, not toISOString() (which is UTC
+    and silently shifts a day for any positive UTC-offset timezone, e.g. Perth) */
+}
+
+function buildDefaultState(){
+  const weeks = [];
+  let cursor = SEED_WEEKS_RAW[0].startDate;
+  for(let i=0;i<TOTAL_WEEKS;i++){
+    if(i < SEED_WEEKS_RAW.length){
+      const s = SEED_WEEKS_RAW[i];
+      weeks.push({ startDate:s.startDate, startWeight:s.startWeight, startWaist:s.startWaist, activity:s.activity, days:s.days.map(d=>({...d})) });
+      cursor = s.startDate;
+    } else {
+      cursor = addDaysISO(cursor,7);
+      weeks.push({ startDate:cursor, startWeight:null, startWaist:null, activity:null,
+        days:Array.from({length:7},()=>Object.fromEntries(CATEGORIES.map(c=>[c.key,null]))) });
+    }
+  }
+  return {
+    settings:{
+      height:176, age:50, goalWeight:80, goalWaist:90, aspirationRate:0.2, theme:'meadow',
+      quotas:Object.fromEntries(CATEGORIES.map(c=>[c.key,c.quota]))
+    },
+    weeks
+  };
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && parsed.weeks && parsed.weeks.length===TOTAL_WEEKS){
+        if(!parsed.settings.theme) parsed.settings.theme='meadow';
+        return parsed;
+      }
+    }
+  }catch(e){ console.warn('Could not read saved data, starting fresh.', e); }
+  return buildDefaultState();
+}
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); }
+  catch(e){ showToast('Could not save — storage may be full.'); }
+}
+
+/* =========================================================================
+   DERIVED CALCULATIONS — mirrors the Data tab formulas
+   ========================================================================= */
+function quotaFor(key){ return STATE.settings.quotas[key]; }
+
+function weekMetrics(i){
+  const w = STATE.weeks[i];
+  const s = STATE.settings;
+  const hasWeight = typeof w.startWeight === 'number';
+  const hasWaist  = typeof w.startWaist === 'number';
+  const bmi = hasWeight ? w.startWeight / Math.pow(s.height/100,2) : null;
+  const waistPct = hasWaist ? (w.startWaist / s.height) * 100 : null;
+  const whtr = hasWaist ? (w.startWaist / s.height) : null;
+  let energy = null;
+  if(hasWeight && w.activity && ACTIVITY_FACTORS[w.activity]){
+    energy = Math.trunc(((66.47 + 13.75*w.startWeight + 880 - 6.76*s.age) * 4.2) * ACTIVITY_FACTORS[w.activity]);
+  }
+  const difference = hasWeight ? (w.startWeight - s.goalWeight) : null;
+  return { date:w.startDate, weight:w.startWeight, waist:w.startWaist, activity:w.activity, bmi, waistPct, whtr, energy, difference };
+}
+
+/* delta = weight this week minus weight NEXT week (matches the sheet's own
+   row-shifted definition: J[n] = Difference[n] - Difference[n+1]) */
+function weekDelta(i){
+  const a = STATE.weeks[i], b = STATE.weeks[i+1];
+  if(!b || typeof a.startWeight !== 'number' || typeof b.startWeight !== 'number') return null;
+  return a.startWeight - b.startWeight;
+}
+
+/* aspirational weight: actual once known, otherwise a straight-line
+   decline from the last known actual at the configured weekly rate */
+function aspirationalSeries(){
+  const out = [];
+  let last = null;
+  for(let i=0;i<STATE.weeks.length;i++){
+    const w = STATE.weeks[i];
+    if(typeof w.startWeight === 'number'){ last = w.startWeight; out.push(w.startWeight); }
+    else if(last !== null){ last = last - STATE.settings.aspirationRate; out.push(last); }
+    else out.push(null);
+  }
+  return out;
+}
+
+function lastLoggedWeekIndex(){
+  let idx = -1;
+  STATE.weeks.forEach((w,i)=>{ if(typeof w.startWeight==='number') idx=i; });
+  return idx;
+}
+function nextUnloggedWeekIndex(){
+  const last = lastLoggedWeekIndex();
+  return Math.min(last+1, TOTAL_WEEKS-1);
+}
+
+function dayRemaining(weekIdx, catKey, dayIdx){
+  const w = STATE.weeks[weekIdx];
+  const quota = quotaFor(catKey);
+  const cat = CATEGORIES.find(c=>c.key===catKey);
+  if(cat.cumulative){
+    let remaining = quota;
+    for(let d=0; d<=dayIdx; d++){
+      const used = w.days[d][catKey];
+      remaining -= (typeof used==='number' ? used : 0);
+    }
+    return remaining;
+  } else {
+    const used = w.days[dayIdx][catKey];
+    return quota - (typeof used==='number' ? used : 0);
+  }
+}
+
+/* today's used-so-far / status, reusing dayRemaining so the numbers always
+   agree with the This Week tab */
+function categoryProgress(weekIdx, dayIdx, catKey){
+  const cat = CATEGORIES.find(c=>c.key===catKey);
+  const quota = quotaFor(catKey);
+  const rawToday = STATE.weeks[weekIdx].days[dayIdx][catKey];
+  const remaining = dayRemaining(weekIdx, catKey, dayIdx);
+  const used = quota - remaining;
+  const empty = cat.cumulative ? (dayIdx===0 && rawToday===null) : (rawToday===null);
+  const ratio = quota>0 ? used/quota : 0;
+  let status;
+  if(empty) status='empty';
+  else if(ratio < 0.8) status='under';
+  else if(ratio < 0.999) status='near';
+  else if(ratio <= 1.001) status='target';
+  else status='over';
+  return { quota, rawToday, remaining, used, ratio, status, empty };
+}
+const STATUS_LABEL = { empty:'Not logged', under:'Under quota', near:'Near quota', target:'On quota', over:'Over quota' };
+function trimNum(v){ return (Math.round(v*100)/100).toString(); }
+function roundQuarter(v){ return Math.round(v/0.25)*0.25; }
+function sliderMax(quota){ return Math.ceil((quota + Math.max(2, quota*0.6))/0.25)*0.25; }
+
+/* Bands are always fixed to the category's quota (80% / 100% of it) and
+   never move based on what's already been consumed — the slider is purely
+   "how much am I logging right now", read against a constant scale. */
+function sliderGradient(quota, max){
+  const p1 = Math.min(100, (0.8*quota/max)*100);
+  const p2 = Math.min(100, (quota/max)*100);
+  return `linear-gradient(to right, var(--accent) 0%, var(--accent) ${p1}%, var(--highlight) ${p1}%, var(--highlight) ${p2}%, var(--warn) ${p2}%, var(--warn) 100%)`;
+}
+function todaySubText(p, cat){
+  if(p.status==='empty') return 'Not logged yet';
+  if(cat.cumulative){
+    return p.remaining>=0
+      ? `${trimNum(p.used)} of ${p.quota} used this week · ${trimNum(p.remaining)} remaining`
+      : `${trimNum(p.used)} of ${p.quota} used this week · ${trimNum(Math.abs(p.remaining))} over`;
+  }
+  return p.remaining>=0
+    ? `${trimNum(p.remaining)} remaining today`
+    : `${trimNum(Math.abs(p.remaining))} over today`;
+}
+
+/* maps today's real calendar date onto the 69-week timeline, so the Today
+   tab always reflects the actual day regardless of what's been logged */
+function localISODate(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function daysBetweenISO(a,b){ return Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00'))/86400000); }
+function todayLocation(){
+  const todayISO = localISODate(new Date());
+  const firstMonday = STATE.weeks[0].startDate;
+  const offset = daysBetweenISO(firstMonday, todayISO);
+  if(offset < 0) return { weekIdx:0, dayIdx:0, todayISO, inRange:false };
+  const weekIdx = Math.floor(offset/7), dayIdx = offset%7;
+  if(weekIdx >= TOTAL_WEEKS) return { weekIdx:TOTAL_WEEKS-1, dayIdx:6, todayISO, inRange:false };
+  return { weekIdx, dayIdx, todayISO, inRange:true };
+}
+
+/* =========================================================================
+   SVG CHART HELPERS (no external chart library — inline, self-contained)
+   Colours are pulled live from the active theme so charts repaint instantly
+   when the theme changes.
+   ========================================================================= */
+const SVGNS = 'http://www.w3.org/2000/svg';
+function svgEl(tag, attrs){
+  const el = document.createElementNS(SVGNS, tag);
+  for(const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+function niceRange(min, max){
+  if(min===max){ min-=1; max+=1; }
+  const pad = (max-min)*0.12;
+  return [min-pad, max+pad];
+}
+
+function lineChart(container, {series, labels, height=220, refLine=null, yFormat=v=>v.toFixed(1)}){
+  container.innerHTML='';
+  const width = Math.max(320, container.clientWidth || 640);
+  const marginL=42, marginR=14, marginT=14, marginB=26;
+  const innerW = width-marginL-marginR, innerH = height-marginT-marginB;
+  const svg = svgEl('svg',{viewBox:`0 0 ${width} ${height}`, width:'100%', height:height, style:'display:block;max-width:100%;'});
+
+  let allVals = [];
+  series.forEach(s=> s.points.forEach(p=>{ if(typeof p==='number') allVals.push(p); }));
+  if(refLine!==null) allVals.push(refLine);
+  if(!allVals.length){ container.appendChild(svg); return; }
+  let [ymin,ymax] = niceRange(Math.min(...allVals), Math.max(...allVals));
+
+  const gridColor = themeVar('line'), faintColor = themeVar('ink-faint'), warnColor = themeVar('warn');
+  const n = labels.length;
+  const xAt = i => marginL + (n<=1?0:(i/(n-1))*innerW);
+  const yAt = v => marginT + innerH - ((v-ymin)/(ymax-ymin))*innerH;
+
+  const ticks = 4;
+  for(let t=0;t<=ticks;t++){
+    const v = ymin + (ymax-ymin)*(t/ticks);
+    const y = yAt(v);
+    svg.appendChild(svgEl('line',{x1:marginL,x2:width-marginR,y1:y,y2:y,stroke:gridColor,'stroke-width':1}));
+    const txt = svgEl('text',{x:marginL-8,y:y+4,'text-anchor':'end','font-size':10,fill:faintColor});
+    txt.textContent = yFormat(v);
+    svg.appendChild(txt);
+  }
+  if(refLine!==null){
+    const y = yAt(refLine);
+    svg.appendChild(svgEl('line',{x1:marginL,x2:width-marginR,y1:y,y2:y,stroke:warnColor,'stroke-width':1.3,'stroke-dasharray':'4,3'}));
+  }
+  const step = Math.max(1, Math.ceil(n/7));
+  for(let i=0;i<n;i+=step){
+    const txt = svgEl('text',{x:xAt(i),y:height-6,'text-anchor':'middle','font-size':10,fill:faintColor});
+    txt.textContent = labels[i];
+    svg.appendChild(txt);
+  }
+
+  series.forEach(s=>{
+    let d='', pen=false;
+    s.points.forEach((v,i)=>{
+      if(typeof v!=='number'){ pen=false; return; }
+      const x=xAt(i), y=yAt(v);
+      d += (pen? ' L ':' M ')+x+' '+y;
+      pen=true;
+    });
+    if(d) svg.appendChild(svgEl('path',{d, fill:'none', stroke:s.color, 'stroke-width':s.width||2, 'stroke-dasharray':s.dash||'none'}));
+    if(s.dots!==false){
+      s.points.forEach((v,i)=>{
+        if(typeof v!=='number') return;
+        svg.appendChild(svgEl('circle',{cx:xAt(i),cy:yAt(v),r:2.6,fill:s.color}));
+      });
+    }
+  });
+  container.appendChild(svg);
+}
+
+function bandChart(container, {series, labels, thresholds, minY, maxY, valueLabel=v=>v, height=220}){
+  container.innerHTML='';
+  const width = Math.max(320, container.clientWidth || 640);
+  const marginL=42, marginR=14, marginT=14, marginB=26;
+  const innerW = width-marginL-marginR, innerH = height-marginT-marginB;
+  const svg = svgEl('svg',{viewBox:`0 0 ${width} ${height}`, width:'100%', height:height, style:'display:block;max-width:100%;'});
+
+  const vals = series.filter(v=>typeof v==='number');
+  const dataMax = vals.length? Math.max(...vals): thresholds[thresholds.length-1];
+  const ymin = minY, ymax = Math.max(maxY, dataMax+ (maxY-minY)*0.08);
+  const n = labels.length;
+  const xAt = i => marginL + (n<=1?0:(i/(n-1))*innerW);
+  const yAt = v => marginT + innerH - ((v-ymin)/(ymax-ymin))*innerH;
+
+  const faintColor = themeVar('ink-faint'), accentColor = themeVar('accent');
+  const bandColors = [themeVar('highlight-soft'), themeVar('accent-soft'), themeVar('highlight-soft'), themeVar('warn-soft')];
+  const edges = [ymin, ...thresholds, ymax];
+  const bands = [];
+  for(let i=0;i<edges.length-1;i++) bands.push({from:edges[i], to:edges[i+1], color:bandColors[i]});
+  bands.forEach(b=>{
+    const y1=yAt(Math.min(b.to,ymax)), y2=yAt(b.from);
+    svg.appendChild(svgEl('rect',{x:marginL,y:y1,width:innerW,height:Math.max(0,y2-y1),fill:b.color}));
+  });
+  thresholds.forEach(v=>{
+    const y=yAt(v);
+    const txt = svgEl('text',{x:marginL-8,y:y+3,'text-anchor':'end','font-size':9,fill:faintColor});
+    txt.textContent = valueLabel(v);
+    svg.appendChild(txt);
+  });
+  const step = Math.max(1, Math.ceil(n/7));
+  for(let i=0;i<n;i+=step){
+    const txt = svgEl('text',{x:xAt(i),y:height-6,'text-anchor':'middle','font-size':10,fill:faintColor});
+    txt.textContent = labels[i];
+    svg.appendChild(txt);
+  }
+  let d='', pen=false;
+  series.forEach((v,i)=>{
+    if(typeof v!=='number'){ pen=false; return; }
+    const x=xAt(i), y=yAt(v);
+    d += (pen?' L ':' M ')+x+' '+y;
+    pen=true;
+  });
+  if(d) svg.appendChild(svgEl('path',{d, fill:'none', stroke:accentColor,'stroke-width':2.4}));
+  series.forEach((v,i)=>{ if(typeof v==='number') svg.appendChild(svgEl('circle',{cx:xAt(i),cy:yAt(v),r:2.8,fill:accentColor})); });
+  container.appendChild(svg);
+}
+
+function barChartWithLine(container, {bars, labels, refValue=null, height=200}){
+  container.innerHTML='';
+  const width = Math.max(320, container.clientWidth || 640);
+  const marginL=38, marginR=14, marginT=14, marginB=26;
+  const innerW = width-marginL-marginR, innerH = height-marginT-marginB;
+  const svg = svgEl('svg',{viewBox:`0 0 ${width} ${height}`, width:'100%', height:height, style:'display:block;max-width:100%;'});
+  const vals = bars.filter(v=>typeof v==='number');
+  if(!vals.length){ container.appendChild(svg); return; }
+  const barColor = themeVar('accent'), overColor = themeVar('warn'), refColor = themeVar('highlight'), faintColor = themeVar('ink-faint');
+  const dataMax = Math.max(...vals, refValue||0);
+  const dataMin = Math.min(...vals, 0);
+  const ymax = (dataMax*1.15) || 1;
+  const ymin = Math.min(0, dataMin*1.15);
+  const yAt = v => marginT + innerH - ((v-ymin)/(ymax-ymin))*innerH;
+  const zeroY = yAt(0);
+  const n = bars.length;
+  const bw = innerW/n*0.6;
+  bars.forEach((v,i)=>{
+    if(typeof v!=='number') return;
+    const cx = marginL + (i+0.5)*(innerW/n);
+    const y = yAt(v);
+    const over = refValue!==null && v>refValue;
+    const top = Math.min(y, zeroY), h = Math.abs(zeroY-y);
+    svg.appendChild(svgEl('rect',{x:cx-bw/2, y:top, width:bw, height:Math.max(0,h), fill: over?overColor:barColor, rx:2}));
+  });
+  if(refValue!==null){
+    const y = yAt(refValue);
+    svg.appendChild(svgEl('line',{x1:marginL,x2:width-marginR,y1:y,y2:y,stroke:refColor,'stroke-width':1.3,'stroke-dasharray':'4,3'}));
+  }
+  const step = Math.max(1, Math.ceil(n/8));
+  for(let i=0;i<n;i+=step){
+    const cx = marginL + (i+0.5)*(innerW/n);
+    const txt = svgEl('text',{x:cx,y:height-6,'text-anchor':'middle','font-size':9.5,fill:faintColor});
+    txt.textContent = labels[i];
+    svg.appendChild(txt);
+  }
+  container.appendChild(svg);
+}
+
+function donut(container, {achieved, size=120}){
+  container.innerHTML='';
+  const pct = Math.max(0, Math.min(1, isNaN(achieved)?0:achieved));
+  const r=size/2-10, cx=size/2, cy=size/2, circ=2*Math.PI*r;
+  const svg = svgEl('svg',{viewBox:`0 0 ${size} ${size}`, width:size, height:size});
+  svg.appendChild(svgEl('circle',{cx,cy,r,fill:'none',stroke:themeVar('accent-pale'),'stroke-width':14}));
+  const arc = svgEl('circle',{cx,cy,r,fill:'none',stroke:themeVar('accent'),'stroke-width':14,
+    'stroke-dasharray':`${circ*pct} ${circ}`, 'stroke-linecap':'round',
+    transform:`rotate(-90 ${cx} ${cy})`});
+  svg.appendChild(arc);
+  const txt = svgEl('text',{x:cx,y:cy+6,'text-anchor':'middle','font-size':20,'font-family':'Georgia, serif',fill:themeVar('ink')});
+  txt.textContent = Math.round(pct*100)+'%';
+  svg.appendChild(txt);
+  container.appendChild(svg);
+}
+
+function renderBmiGauge(container, bmi){
+  container.innerHTML='';
+  let zone = 'Normal', color=themeVar('accent');
+  if(bmi < BMI_UNDER){ zone='Underweight'; color=themeVar('highlight'); }
+  else if(bmi < BMI_NORMAL){ zone='Normal'; color=themeVar('accent'); }
+  else if(bmi < BMI_OVER){ zone='Overweight'; color=themeVar('highlight'); }
+  else { zone='Obese'; color=themeVar('warn'); }
+  const size=120;
+  const svg = svgEl('svg',{viewBox:`0 0 ${size} ${size}`, width:size, height:size});
+  const r=size/2-10, cx=size/2, cy=size/2;
+  svg.appendChild(svgEl('circle',{cx,cy,r,fill:'none',stroke:themeVar('accent-pale'),'stroke-width':14}));
+  svg.appendChild(svgEl('circle',{cx,cy,r,fill:'none',stroke:color,'stroke-width':14,'stroke-dasharray':`${2*Math.PI*r*0.75} ${2*Math.PI*r}`,'stroke-linecap':'round',transform:`rotate(-225 ${cx} ${cy})`}));
+  const txt = svgEl('text',{x:cx,y:cy,'text-anchor':'middle','font-size':20,'font-family':'Georgia, serif',fill:themeVar('ink')});
+  txt.textContent = bmi.toFixed(1);
+  svg.appendChild(txt);
+  const txt2 = svgEl('text',{x:cx,y:cy+18,'text-anchor':'middle','font-size':10,fill:themeVar('ink-soft')});
+  txt2.textContent = zone;
+  svg.appendChild(txt2);
+  container.appendChild(svg);
+}
+
+/* =========================================================================
+   VIEW: DASHBOARD
+   ========================================================================= */
+function renderDash(){
+  const el = document.getElementById('view-dash');
+  const idx = lastLoggedWeekIndex();
+  const s = STATE.settings;
+
+  if(idx < 0){
+    el.innerHTML = `<section class="block"><p class="empty-note">No weeks logged yet. Head to <strong>This Week</strong> to record your first weigh-in.</p></section>`;
+    return;
+  }
+
+  const cur = weekMetrics(idx);
+  const start = weekMetrics(0);
+  const weightAchievedPct = (start.weight - cur.weight) / (start.weight - s.goalWeight);
+
+  const startWaistPct = start.waistPct;
+  const curWaistPct = cur.waistPct;
+  const waistAchievedPct = (startWaistPct - curWaistPct) / (startWaistPct - WAIST_HEIGHT_GOAL_PCT);
+
+  el.innerHTML = `
+    <div class="grid2">
+      <section class="block">
+        <h2>Weight</h2>
+        <div class="sub">Since ${fmtDate(start.date)}</div>
+        <div class="stat-row">
+          <div class="stat"><div class="num accent">${cur.weight.toFixed(1)}</div><div class="lbl">Current (kg)</div></div>
+          <div class="stat"><div class="num">${start.weight.toFixed(1)}</div><div class="lbl">Start (kg)</div></div>
+          <div class="stat"><div class="num">${s.goalWeight.toFixed(1)}</div><div class="lbl">Goal (kg)</div></div>
+        </div>
+        <div class="ruler">
+          <div class="labels"><span>Start ${start.weight.toFixed(1)}kg</span><span>Goal ${s.goalWeight.toFixed(1)}kg</span></div>
+          <div class="track"><div class="fill" style="width:${Math.max(0,Math.min(100,weightAchievedPct*100))}%"></div></div>
+          <div class="pct">${Math.round(weightAchievedPct*100)}% of the way to goal · ${(start.weight-cur.weight).toFixed(1)}kg lost so far</div>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2>Waistline — % of height</h2>
+        <div class="sub">Health guideline: keep your waist under 50% of your height</div>
+        <div class="stat-row">
+          <div class="stat"><div class="num accent">${curWaistPct.toFixed(1)}%</div><div class="lbl">Current</div></div>
+          <div class="stat"><div class="num">${startWaistPct.toFixed(1)}%</div><div class="lbl">Start</div></div>
+          <div class="stat"><div class="num">${WAIST_HEIGHT_GOAL_PCT}%</div><div class="lbl">Goal</div></div>
+        </div>
+        <div class="ruler">
+          <div class="labels"><span>Start ${startWaistPct.toFixed(1)}%</span><span>Goal ${WAIST_HEIGHT_GOAL_PCT}%</span></div>
+          <div class="track"><div class="fill" style="width:${Math.max(0,Math.min(100,waistAchievedPct*100))}%"></div></div>
+          <div class="pct">${Math.round(waistAchievedPct*100)}% of the way to goal</div>
+          <div class="secondary">In centimetres: ${cur.waist.toFixed(0)}cm now, started at ${start.waist.toFixed(0)}cm, goal set at ${s.goalWaist.toFixed(0)}cm</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="grid3">
+      <section class="block"><h2>BMI</h2><div class="sub">Current: ${cur.bmi.toFixed(1)}</div><div id="donutBmiWrap" style="display:flex;justify-content:center;"></div></section>
+      <section class="block"><h2>Weight goal progress</h2><div class="sub">Achieved vs remaining</div><div id="donutWeightWrap" style="display:flex;justify-content:center;"></div></section>
+      <section class="block"><h2>Waist goal progress</h2><div class="sub">Achieved vs remaining (vs the 50% target)</div><div id="donutWaistWrap" style="display:flex;justify-content:center;"></div></section>
+    </div>
+
+    <section class="block">
+      <h2>Weight loss progress</h2>
+      <div class="sub">Actual weight vs an aspirational trend line and your goal</div>
+      <div id="chartWeight"></div>
+      <div class="legend" id="legendWeight"></div>
+    </section>
+
+    <section class="block">
+      <h2>Shorts fit again — waistline progress</h2>
+      <div class="sub">Waist measurement (cm) against your goal</div>
+      <div id="chartWaist"></div>
+      <div class="legend" id="legendWaist"></div>
+    </section>
+
+    <section class="block">
+      <h2>Waist-to-height ratio</h2>
+      <div class="sub">Waist as a proportion of height — a more size-independent risk measure than cm alone</div>
+      <div id="chartWhtr"></div>
+      <div class="legend">
+        <span><span class="swatch" style="background:${themeVar('highlight-soft')}"></span>Under 0.40 — too slender</span>
+        <span><span class="swatch" style="background:${themeVar('accent-soft')}"></span>0.40–0.49 — healthy range</span>
+        <span><span class="swatch" style="background:${themeVar('highlight-soft')}"></span>0.50–0.59 — elevated risk</span>
+        <span><span class="swatch" style="background:${themeVar('warn-soft')}"></span>0.60+ — higher risk</span>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>BMI over time</h2>
+      <div class="sub">Shaded bands show underweight / normal / overweight / obese ranges</div>
+      <div id="chartBmi"></div>
+    </section>
+
+    <section class="block">
+      <h2>Weekly change</h2>
+      <div class="sub">Kilograms lost (or gained) week to week</div>
+      <div id="chartDelta"></div>
+    </section>
+
+    <section class="block">
+      <h2>Daily quota tracking</h2>
+      <div class="sub">
+        <select id="quotaCatSelect" style="width:auto;display:inline-block;"></select>
+        &nbsp;— every logged day so far, against the daily quota
+      </div>
+      <div id="chartQuota"></div>
+    </section>
+  `;
+
+  renderBmiGauge(document.getElementById('donutBmiWrap'), cur.bmi);
+  donut(document.getElementById('donutWeightWrap'), {achieved:weightAchievedPct});
+  donut(document.getElementById('donutWaistWrap'), {achieved:waistAchievedPct});
+
+  const accent = themeVar('accent'), highlight = themeVar('highlight'), warn = themeVar('warn');
+  document.getElementById('legendWeight').innerHTML = `
+    <span><span class="swatch" style="background:${accent}"></span>Actual weight</span>
+    <span><span class="swatch" style="background:${highlight}"></span>Aspirational trend</span>
+    <span><span class="swatch" style="background:${warn}"></span>Goal (${s.goalWeight}kg)</span>`;
+  document.getElementById('legendWaist').innerHTML = `
+    <span><span class="swatch" style="background:${accent}"></span>Waist (cm)</span>
+    <span><span class="swatch" style="background:${warn}"></span>Goal (${s.goalWaist}cm)</span>`;
+
+  const labels = STATE.weeks.map((w,i)=>'W'+(i+1));
+  const upto = idx+1;
+  const actualWeights = STATE.weeks.slice(0,upto).map(w=> typeof w.startWeight==='number'? w.startWeight: null);
+  const aspSeries = aspirationalSeries().slice(0,upto);
+  lineChart(document.getElementById('chartWeight'), {
+    series:[
+      {points:actualWeights, color:accent, width:2.4},
+      {points:aspSeries, color:highlight, width:1.6, dash:'5,4', dots:false}
+    ],
+    labels:labels.slice(0,upto),
+    refLine: s.goalWeight
+  });
+
+  const waistCmSeries = STATE.weeks.slice(0,upto).map(w=> typeof w.startWaist==='number'? w.startWaist: null);
+  lineChart(document.getElementById('chartWaist'), {
+    series:[{points:waistCmSeries, color:accent, width:2.4}],
+    labels:labels.slice(0,upto),
+    refLine: s.goalWaist,
+    yFormat:v=>v.toFixed(0)+'cm'
+  });
+
+  const whtrSeries = STATE.weeks.slice(0,upto).map((w,i)=> weekMetrics(i).whtr);
+  bandChart(document.getElementById('chartWhtr'), {
+    series:whtrSeries, labels:labels.slice(0,upto),
+    thresholds:[WHTR_LOW, WHTR_HEALTHY_MAX, WHTR_ELEVATED_MAX],
+    minY:0.3, maxY:0.65,
+    valueLabel:v=>v.toFixed(2)
+  });
+
+  const bmiSeries = STATE.weeks.slice(0,upto).map((w,i)=> weekMetrics(i).bmi);
+  bandChart(document.getElementById('chartBmi'), {
+    series:bmiSeries, labels:labels.slice(0,upto),
+    thresholds:[BMI_UNDER, BMI_NORMAL, BMI_OVER],
+    minY:15, maxY:BMI_OBESE+2,
+    valueLabel:v=>v
+  });
+
+  const deltas = STATE.weeks.slice(0,Math.max(0,upto-1)).map((w,i)=> weekDelta(i));
+  barChartWithLine(document.getElementById('chartDelta'), { bars:deltas, labels:labels.slice(0,Math.max(0,upto-1)), refValue:0 });
+
+  const sel = document.getElementById('quotaCatSelect');
+  sel.innerHTML = CATEGORIES.map(c=>`<option value="${c.key}">${c.label}</option>`).join('');
+  sel.value = STATE._lastQuotaCat || 'protein';
+  sel.addEventListener('change', ()=>{ STATE._lastQuotaCat = sel.value; renderQuotaChart(sel.value, idx); });
+  renderQuotaChart(sel.value, idx);
+}
+
+function renderQuotaChart(catKey, uptoIdx){
+  const quota = quotaFor(catKey);
+  const days = [];
+  const labels = [];
+  for(let w=0; w<=uptoIdx; w++){
+    const week = STATE.weeks[w];
+    if(typeof week.startWeight !== 'number') continue;
+    week.days.forEach((day,d)=>{
+      const val = day[catKey];
+      if(typeof val === 'number'){ days.push(val); labels.push('W'+(w+1)+' '+DAY_NAMES[d].slice(0,3)); }
+    });
+  }
+  barChartWithLine(document.getElementById('chartQuota'), { bars:days, labels, refValue:quota });
+}
+
+/* =========================================================================
+   VIEW: TODAY — quick single-day entry with sliders + steppers, colour-coded
+   against the quota. Writes into the same data the This Week tab reads.
+   ========================================================================= */
+function renderToday(){
+  const el = document.getElementById('view-today');
+  const { weekIdx, dayIdx, todayISO, inRange } = todayLocation();
+  const week = STATE.weeks[weekIdx];
+
+  let bannerHtml = '';
+  if(!inRange){
+    bannerHtml = `<div class="today-banner">Today's date falls outside the 69-week tracker, so this is showing the nearest day (Week ${weekIdx+1}, ${DAY_NAMES[dayIdx]}).</div>`;
+  } else if(dayIdx===0 && typeof week.startWeight !== 'number'){
+    bannerHtml = `<div class="today-banner"><span>It's Monday — don't forget this week's weigh-in.</span><button class="btn secondary" id="gotoWeighInBtn">Log weigh-in</button></div>`;
+  }
+
+  el.innerHTML = `
+    <div class="today-header">
+      <h2>${DAY_NAMES[dayIdx]}</h2>
+      <span class="sub-date">${fmtDate(todayISO)} · Week ${weekIdx+1} of ${TOTAL_WEEKS}</span>
+    </div>
+    ${bannerHtml}
+    <div class="today-grid" id="todayGrid"></div>
+  `;
+
+  const grid = document.getElementById('todayGrid');
+  grid.innerHTML = CATEGORIES.map(cat=>todayCardHTML(cat, weekIdx, dayIdx)).join('');
+
+  grid.querySelectorAll('.today-card').forEach(card=>{
+    const key = card.dataset.card;
+    const cat = CATEGORIES.find(c=>c.key===key);
+    const slider = card.querySelector('[data-slider]');
+
+    slider.addEventListener('input', ()=>{
+      const v = roundQuarter(parseFloat(slider.value));
+      STATE.weeks[weekIdx].days[dayIdx][key] = isNaN(v) ? null : Math.max(0,v);
+      saveState();
+      refreshTodayCard(card, cat, weekIdx, dayIdx);
+    });
+
+    card.querySelectorAll('.stepper').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const cur = STATE.weeks[weekIdx].days[dayIdx][key] ?? 0;
+        const next = Math.max(0, roundQuarter(cur + (btn.dataset.dir==='1' ? 0.25 : -0.25)));
+        STATE.weeks[weekIdx].days[dayIdx][key] = next;
+        slider.value = next;
+        saveState();
+        refreshTodayCard(card, cat, weekIdx, dayIdx);
+      });
+    });
+
+    const clearBtn = card.querySelector('[data-clear]');
+    clearBtn.addEventListener('click', ()=>{
+      STATE.weeks[weekIdx].days[dayIdx][key] = null;
+      slider.value = 0;
+      saveState();
+      refreshTodayCard(card, cat, weekIdx, dayIdx);
+    });
+  });
+
+  const weighInBtn = document.getElementById('gotoWeighInBtn');
+  if(weighInBtn){
+    weighInBtn.addEventListener('click', ()=>{
+      currentWeekIdx = weekIdx;
+      document.querySelector('nav.tabs button[data-view="week"]').click();
+    });
+  }
+}
+
+function todayCardHTML(cat, weekIdx, dayIdx){
+  const p = categoryProgress(weekIdx, dayIdx, cat.key);
+  const max = sliderMax(p.quota);
+  const val = p.rawToday ?? 0;
+  return `
+  <div class="today-card ${cat.cumulative?'today-card-cumulative':''}" data-card="${cat.key}">
+    <div class="today-card-head">
+      <div class="today-cat-name">${cat.label}<span class="quota-note">${cat.cumulative ? 'weekly quota '+p.quota+' — total is for the week so far' : 'daily quota '+p.quota}</span></div>
+      <div class="today-status-pill status-${p.status}" data-pill>${STATUS_LABEL[p.status]}</div>
+    </div>
+    <div class="today-value-row">
+      <button class="stepper" data-dir="-1" aria-label="Decrease ${cat.label}">&minus;</button>
+      <div class="today-value" data-val>${p.rawToday===null ? '–' : trimNum(p.rawToday)}</div>
+      <button class="stepper" data-dir="1" aria-label="Increase ${cat.label}">+</button>
+    </div>
+    <div class="slider-wrap" style="background:${sliderGradient(p.quota, max)}">
+      <input type="range" class="today-slider" data-slider min="0" max="${max}" step="0.25" value="${val}">
+    </div>
+    <div class="today-sub" data-sub>${todaySubText(p, cat)}</div>
+    <button class="clear-btn" data-clear style="${p.rawToday===null?'visibility:hidden;':''}">Clear entry</button>
+  </div>`;
+}
+
+function refreshTodayCard(card, cat, weekIdx, dayIdx){
+  const p = categoryProgress(weekIdx, dayIdx, cat.key);
+  card.querySelector('[data-val]').textContent = p.rawToday===null ? '–' : trimNum(p.rawToday);
+  const pill = card.querySelector('[data-pill]');
+  pill.className = 'today-status-pill status-'+p.status;
+  pill.textContent = STATUS_LABEL[p.status];
+  card.querySelector('[data-sub]').textContent = todaySubText(p, cat);
+  const clearBtn = card.querySelector('[data-clear]');
+  clearBtn.style.visibility = p.rawToday===null ? 'hidden' : 'visible';
+  /* the slider's colour bands are fixed to the quota and never move,
+     so nothing else needs repainting here */
+}
+
+/* =========================================================================
+   VIEW: WEEK LOG
+   ========================================================================= */
+let currentWeekIdx = null;
+
+function renderWeek(){
+  if(currentWeekIdx === null) currentWeekIdx = todayLocation().weekIdx;
+  const el = document.getElementById('view-week');
+  const w = STATE.weeks[currentWeekIdx];
+
+  const dayDates = Array.from({length:7}, (_,i)=> addDaysISO(w.startDate, i));
+
+  el.innerHTML = `
+    <div class="week-nav">
+      <button class="btn ghost" id="prevWeekBtn" ${currentWeekIdx===0?'disabled':''}>&larr; Previous</button>
+      <div class="center">Week ${currentWeekIdx+1} of ${TOTAL_WEEKS}<span class="date">Starting Monday ${fmtDate(w.startDate)}</span></div>
+      <button class="btn ghost" id="nextWeekBtn" ${currentWeekIdx===TOTAL_WEEKS-1?'disabled':''}>Next &rarr;</button>
+    </div>
+
+    <section class="block">
+      <div class="week-meta">
+        <div><label class="field">Start weight (kg)</label><input type="number" step="0.1" id="inpWeight" value="${w.startWeight ?? ''}"></div>
+        <div><label class="field">Start waist (cm)</label><input type="number" step="0.5" id="inpWaist" value="${w.startWaist ?? ''}"></div>
+        <div><label class="field">Activity level</label>
+          <select id="inpActivity">
+            <option value="">— choose —</option>
+            ${ACTIVITY_ORDER.map(a=>`<option value="${a}" ${w.activity===a?'selected':''}>${a}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Daily food quotas</h2>
+      <div class="sub">All categories reset each day, except Indulgence, which accumulates across the week and resets Monday.</div>
+      <div style="overflow-x:auto;">
+        <div class="day-cols" id="dayCols"></div>
+      </div>
+    </section>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+      <button class="btn ghost" id="jumpTodayBtn">Jump to today's week</button>
+      <button class="btn secondary" id="jumpCurrentBtn">Jump to next unlogged week</button>
+    </div>
+  `;
+
+  const grid = document.getElementById('dayCols');
+  let html = `<div class="rowhead">Category</div>`;
+  dayDates.forEach((d,i)=> html += `<div class="colhead">${DAY_NAMES[i].slice(0,3)}<span class="d">${fmtDateShort(d)}</span></div>`);
+
+  CATEGORIES.forEach(cat=>{
+    html += `<div class="rowhead ${cat.cumulative?'cat-indulgence':''}" title="${cat.unit}">${cat.label}<span class="quota">&nbsp;(quota ${quotaFor(cat.key)})</span></div>`;
+    for(let d=0; d<7; d++){
+      const val = w.days[d][cat.key];
+      html += `<div class="${cat.cumulative?'cat-indulgence':''}">
+        <input type="number" step="0.25" min="0" data-day="${d}" data-cat="${cat.key}" class="dayInput" value="${val ?? ''}">
+        <div class="remaining" data-rem-day="${d}" data-rem-cat="${cat.key}"></div>
+      </div>`;
+    }
+  });
+  grid.innerHTML = html;
+  updateAllRemaining();
+
+  grid.querySelectorAll('.dayInput').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const d = +inp.dataset.day, cat = inp.dataset.cat;
+      const v = inp.value==='' ? null : parseFloat(inp.value);
+      STATE.weeks[currentWeekIdx].days[d][cat] = (v===null || isNaN(v)) ? null : v;
+      updateAllRemaining();
+      saveState();
+    });
+  });
+
+  document.getElementById('inpWeight').addEventListener('change', e=>{
+    const v = e.target.value===''? null : parseFloat(e.target.value);
+    STATE.weeks[currentWeekIdx].startWeight = (v===null||isNaN(v))?null:v;
+    saveState(); showToast('Saved');
+  });
+  document.getElementById('inpWaist').addEventListener('change', e=>{
+    const v = e.target.value===''? null : parseFloat(e.target.value);
+    STATE.weeks[currentWeekIdx].startWaist = (v===null||isNaN(v))?null:v;
+    saveState(); showToast('Saved');
+  });
+  document.getElementById('inpActivity').addEventListener('change', e=>{
+    STATE.weeks[currentWeekIdx].activity = e.target.value || null;
+    saveState(); showToast('Saved');
+  });
+
+  document.getElementById('prevWeekBtn').addEventListener('click', ()=>{ currentWeekIdx=Math.max(0,currentWeekIdx-1); renderWeek(); });
+  document.getElementById('nextWeekBtn').addEventListener('click', ()=>{ currentWeekIdx=Math.min(TOTAL_WEEKS-1,currentWeekIdx+1); renderWeek(); });
+  document.getElementById('jumpTodayBtn').addEventListener('click', ()=>{ currentWeekIdx=todayLocation().weekIdx; renderWeek(); });
+  document.getElementById('jumpCurrentBtn').addEventListener('click', ()=>{ currentWeekIdx=nextUnloggedWeekIndex(); renderWeek(); });
+}
+
+function updateAllRemaining(){
+  CATEGORIES.forEach(cat=>{
+    for(let d=0; d<7; d++){
+      const remEl = document.querySelector(`[data-rem-day="${d}"][data-rem-cat="${cat.key}"]`);
+      if(!remEl) continue;
+      const rem = dayRemaining(currentWeekIdx, cat.key, d);
+      remEl.textContent = (rem<0?'':'+')+rem.toFixed(2).replace(/\.00$/,'').replace(/(\.\d)0$/,'$1');
+      remEl.classList.toggle('over', rem<0);
+      remEl.classList.toggle('ok', rem>=0);
+    }
+  });
+}
+
+/* =========================================================================
+   VIEW: HISTORY (mirrors the Data tab)
+   ========================================================================= */
+function renderHistory(){
+  const el = document.getElementById('view-history');
+  const rows = STATE.weeks.map((w,i)=>({i, m:weekMetrics(i), delta:weekDelta(i)})).filter(r=> typeof r.m.weight === 'number');
+
+  if(!rows.length){
+    el.innerHTML = `<section class="block"><p class="empty-note">Nothing logged yet — your history will appear here week by week.</p></section>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <section class="block">
+      <h2>Log book</h2>
+      <div class="sub">One row per week you've recorded a Monday weigh-in</div>
+      <div style="overflow-x:auto;">
+        <table class="data">
+          <thead><tr>
+            <th>Week</th><th>Date</th><th>Weight</th><th>Waist</th><th>Waist %</th>
+            <th>BMI</th><th>Energy output (kJ)</th><th>vs Goal</th><th>Weekly Δ</th><th>Activity</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(r=>`
+              <tr>
+                <td>${r.i+1}</td>
+                <td>${fmtDate(r.m.date)}</td>
+                <td>${r.m.weight.toFixed(1)} kg</td>
+                <td>${r.m.waist.toFixed(0)} cm</td>
+                <td>${r.m.waistPct!==null? r.m.waistPct.toFixed(1)+'%':'—'}</td>
+                <td>${r.m.bmi!==null? r.m.bmi.toFixed(1):'—'}</td>
+                <td>${r.m.energy!==null? r.m.energy.toLocaleString():'—'}</td>
+                <td>${r.m.difference!==null? (r.m.difference>=0?'+':'')+r.m.difference.toFixed(1)+' kg':'—'}</td>
+                <td>${r.delta!==null? (r.delta>=0?'−':'+')+Math.abs(r.delta).toFixed(1)+' kg':'—'}</td>
+                <td>${r.m.activity||'—'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+/* =========================================================================
+   VIEW: SETTINGS
+   ========================================================================= */
+function renderSettings(){
+  const el = document.getElementById('view-settings');
+  const s = STATE.settings;
+
+  const groups = ['Light','Dark'];
+  const themeHtml = groups.map(g=>{
+    const cards = THEME_ORDER.filter(k=>THEMES[k].group===g).map(k=>{
+      const t = THEMES[k];
+      const active = s.theme===k;
+      return `<div class="theme-card ${active?'active':''}" data-theme="${k}">
+        <div class="dots"><span style="background:${t.bg};border:1px solid ${t.line}"></span><span style="background:${t.accent}"></span></div>
+        <div class="name">${t.label}</div>
+        ${active?'<div class="check">✓</div>':''}
+      </div>`;
+    }).join('');
+    return `<div><div class="theme-group-label">${g}</div><div class="theme-cards">${cards}</div></div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <section class="block">
+      <h2>Colour theme</h2>
+      <div class="sub">Pick a palette — it applies everywhere, including the charts</div>
+      <div class="theme-groups">${themeHtml}</div>
+    </section>
+
+    <section class="block">
+      <h2>Goals &amp; personal details</h2>
+      <div class="sub">These feed the BMI, waist %, and energy-output calculations, matching the Reference tab of the original spreadsheet</div>
+      <div class="settings-grid">
+        <div><label class="field">Goal weight (kg)</label><input type="number" step="0.1" id="setGoalWeight" value="${s.goalWeight}"></div>
+        <div><label class="field">Goal waist (cm)</label><input type="number" step="0.5" id="setGoalWaist" value="${s.goalWaist}"></div>
+        <div><label class="field">Height (cm)</label><input type="number" step="0.5" id="setHeight" value="${s.height}"></div>
+        <div><label class="field">Age (years)</label><input type="number" step="1" id="setAge" value="${s.age}"></div>
+        <div><label class="field">Aspirational weekly loss (kg)</label><input type="number" step="0.05" id="setAspiration" value="${s.aspirationRate}"></div>
+      </div>
+    </section>
+
+    <section class="block">
+      <h2>Daily quotas</h2>
+      <div class="sub">Units per day for each food category (Indulgence accumulates for the week)</div>
+      ${CATEGORIES.map(c=>`
+        <div class="quota-row">
+          <div>${c.label}</div>
+          <input type="number" step="0.25" min="0" data-quota="${c.key}" value="${s.quotas[c.key]}">
+        </div>`).join('')}
+    </section>
+
+    <section class="block">
+      <h2>Backup</h2>
+      <div class="sub">Everything is stored only in this browser. Export a copy from time to time.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn" id="exportBtn">Export backup (.json)</button>
+        <button class="btn secondary" id="importBtn">Import backup</button>
+        <button class="btn ghost" id="resetBtn">Reset all data</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json" style="display:none;">
+    </section>
+  `;
+
+  el.querySelectorAll('.theme-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      applyTheme(card.dataset.theme);
+      renderThemeQuick();
+      renderAll();
+    });
+  });
+
+  el.querySelectorAll('#setGoalWeight,#setGoalWaist,#setHeight,#setAge,#setAspiration').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      s.goalWeight = parseFloat(document.getElementById('setGoalWeight').value)||s.goalWeight;
+      s.goalWaist  = parseFloat(document.getElementById('setGoalWaist').value)||s.goalWaist;
+      s.height     = parseFloat(document.getElementById('setHeight').value)||s.height;
+      s.age        = parseFloat(document.getElementById('setAge').value)||s.age;
+      s.aspirationRate = parseFloat(document.getElementById('setAspiration').value)||s.aspirationRate;
+      saveState(); showToast('Settings saved');
+    });
+  });
+  el.querySelectorAll('[data-quota]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const v = parseFloat(inp.value);
+      if(!isNaN(v)) s.quotas[inp.dataset.quota] = v;
+      saveState(); showToast('Quota saved');
+    });
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(STATE,null,2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'weight-tracker-backup.json';
+    a.click();
+  });
+  document.getElementById('importBtn').addEventListener('click', ()=> document.getElementById('importFile').click());
+  document.getElementById('importFile').addEventListener('change', e=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const parsed = JSON.parse(reader.result);
+        if(parsed && parsed.weeks && parsed.settings){
+          if(!parsed.settings.theme) parsed.settings.theme='meadow';
+          STATE = parsed;
+          applyTheme(STATE.settings.theme);
+          saveState();
+          showToast('Backup imported');
+          renderThemeQuick();
+          renderAll();
+        } else showToast('That file does not look like a valid backup.');
+      }catch(err){ showToast('Could not read that file.'); }
+    };
+    reader.readAsText(file);
+  });
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    if(confirm('This clears everything in this browser and restores the four sample weeks. Continue?')){
+      const keepTheme = STATE.settings.theme;
+      STATE = buildDefaultState();
+      STATE.settings.theme = keepTheme;
+      saveState();
+      currentWeekIdx = null;
+      renderAll();
+      showToast('Data reset');
+    }
+  });
+}
+
+/* =========================================================================
+   UTIL / NAV
+   ========================================================================= */
+function fmtDate(iso){
+  const d = new Date(iso+'T00:00:00');
+  return d.toLocaleDateString(undefined, {day:'numeric',month:'short',year:'numeric'});
+}
+function fmtDateShort(iso){
+  const d = new Date(iso+'T00:00:00');
+  return d.toLocaleDateString(undefined, {day:'numeric',month:'short'});
+}
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function renderAll(){
+  renderDash();
+  renderToday();
+  renderWeek();
+  renderHistory();
+  renderSettings();
+}
+
+function setupNav(){
+  const buttons = document.querySelectorAll('nav.tabs button');
+  buttons.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      buttons.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      document.getElementById('view-'+btn.dataset.view).classList.add('active');
+      if(btn.dataset.view==='dash') renderDash();
+      if(btn.dataset.view==='today') renderToday();
+      if(btn.dataset.view==='week') renderWeek();
+      if(btn.dataset.view==='history') renderHistory();
+      if(btn.dataset.view==='settings') renderSettings();
+    });
+  });
+  window.addEventListener('resize', debounce(()=>{
+    const activeView = document.querySelector('nav.tabs button.active')?.dataset.view;
+    if(activeView==='dash') renderDash();
+  }, 200));
+}
+function debounce(fn, ms){ let h; return (...a)=>{ clearTimeout(h); h=setTimeout(()=>fn(...a), ms); }; }
+
+/* =========================================================================
+   INIT
+   ========================================================================= */
+STATE = loadState();
+applyTheme(STATE.settings.theme);
+document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined,{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+setupNav();
+renderThemeQuick();
+renderAll();
+</script>
+
+<script>
+/* Register the service worker so the app keeps working offline once it has
+   been opened at least once. Safe to no-op if the browser doesn't support it
+   or if the page is opened from a plain file:// path (SWs need http(s)). */
+if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost' || location.hostname.match(/^(\d{1,3}\.){3}\d{1,3}$/))){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(err=>console.warn('Service worker registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
