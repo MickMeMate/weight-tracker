@@ -1,6 +1,6 @@
 {
-  "name": "Weight & Waist Tracker",
-  "short_name": "Wt Tracker",
+  "name": "The Cut - Weight & Waist Tracker",
+  "short_name": "The Cut",
   "description": "Personal weight, waist and food-quota tracker based on the CSIRO Total Wellbeing Diet method.",
   "start_url": "./index.html",
   "scope": "./",
