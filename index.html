@@ -5,15 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>Weight &amp; Waist Tracker</title>
-
-<!-- PWA: installable "Add to Home Screen" support -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2E5C42">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Wt Tracker">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
   :root{
     --bg:#F6F4EE;
@@ -51,13 +42,6 @@
   }
   header.top .tagline{color:var(--ink-soft); font-size:12.5px; margin-top:4px;}
   header.top .today{font-size:12.5px; color:var(--ink-faint); text-align:right;}
-
-  .theme-quick{display:flex; align-items:center; gap:6px; margin-top:8px;}
-  .theme-quick button{
-    width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;
-    box-shadow:0 0 0 1px var(--line) inset;
-  }
-  .theme-quick button.active{border-color:var(--ink);}
 
   nav.tabs{
     display:flex; gap:2px; margin:16px 0 24px; border-bottom:1px solid var(--line);
@@ -199,11 +183,15 @@
   @media (max-width:700px){ .today-grid{grid-template-columns:1fr;} }
 
   .today-card{
-    border:1px solid var(--line); background:var(--paper); border-radius:10px; padding:16px 16px 12px;
+    border:1.5px solid var(--line); background:var(--paper); border-radius:10px; padding:16px 16px 12px;
+    transition:border-color 0.15s ease, background 0.15s ease;
   }
-  .today-card-cumulative{
-    border-color:var(--highlight); box-shadow:inset 0 0 0 1px var(--highlight-soft);
-  }
+  /* card border + tint match the status pill's colour exactly */
+  .today-card.status-under{ border-color:var(--accent); background:var(--accent-pale); }
+  .today-card.status-near{ border-color:var(--highlight); background:var(--highlight-soft); }
+  .today-card.status-target{ border-color:var(--accent); background:var(--accent-soft); }
+  .today-card.status-over{ border-color:var(--warn); background:var(--warn-soft); }
+
   .today-card-head{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px;}
   .today-cat-name{font-size:14.5px; font-weight:600; color:var(--ink);}
   .today-cat-name .quota-note{display:block; font-size:11px; font-weight:400; color:var(--ink-faint); margin-top:2px;}
@@ -222,30 +210,32 @@
     width:42px; height:42px; border-radius:50%; border:1.5px solid var(--line); background:var(--paper);
     font-size:20px; line-height:1; color:var(--ink); cursor:pointer; flex-shrink:0;
   }
-  .stepper:hover{border-color:var(--accent); color:var(--accent);}
+  .stepper:hover{filter:brightness(0.96);}
   .stepper:active{transform:scale(0.94);}
+  /* stepper buttons match the same status colour as the card/pill */
+  .today-card.status-under .stepper{ border-color:var(--accent); color:var(--accent); background:var(--paper); }
+  .today-card.status-near .stepper{ border-color:var(--highlight); color:var(--highlight); background:var(--paper); }
+  .today-card.status-target .stepper{ border-color:var(--accent); color:var(--paper); background:var(--accent); }
+  .today-card.status-over .stepper{ border-color:var(--warn); color:var(--warn); background:var(--paper); }
 
   .slider-wrap{height:14px; border-radius:7px; position:relative; margin-bottom:4px;}
   input[type=range].today-slider{
     -webkit-appearance:none; appearance:none; width:100%; height:14px; margin:0; background:transparent;
-    position:relative; display:block; cursor:pointer;
+    position:relative; display:block;
+    cursor:default; pointer-events:none; /* read-only: value only changes via the +/- buttons */
   }
   input[type=range].today-slider::-webkit-slider-runnable-track{background:transparent; height:14px; border-radius:7px;}
   input[type=range].today-slider::-moz-range-track{background:transparent; height:14px; border-radius:7px;}
   input[type=range].today-slider::-webkit-slider-thumb{
     -webkit-appearance:none; width:24px; height:24px; border-radius:50%;
-    background:var(--paper); border:3px solid var(--ink); margin-top:-5px; cursor:pointer;
+    background:var(--paper); border:3px solid var(--ink); margin-top:-5px; cursor:default;
     box-shadow:0 1px 3px rgba(0,0,0,0.3);
   }
   input[type=range].today-slider::-moz-range-thumb{
     width:24px; height:24px; border-radius:50%; background:var(--paper); border:3px solid var(--ink);
-    cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.3);
+    cursor:default; box-shadow:0 1px 3px rgba(0,0,0,0.3);
   }
   .today-sub{font-size:12px; color:var(--ink-soft); text-align:center; margin-top:4px;}
-  .clear-btn{
-    display:block; margin:6px auto 0; background:none; border:none; color:var(--ink-faint);
-    font-size:11px; text-decoration:underline; cursor:pointer; padding:4px;
-  }
 </style>
 </head>
 <body>
@@ -255,7 +245,6 @@
     <div>
       <h1>Weight &amp; Waist Tracker</h1>
       <div class="tagline">Based on the CSIRO Total Wellbeing Diet method</div>
-      <div class="theme-quick" id="themeQuick"></div>
     </div>
     <div class="today" id="todayLabel"></div>
   </header>
@@ -357,22 +346,6 @@ function applyTheme(key){
   if(STATE){ STATE.settings.theme = key; saveState(); }
 }
 function themeVar(name){ return getComputedStyle(document.documentElement).getPropertyValue('--'+name).trim(); }
-
-function renderThemeQuick(){
-  const wrap = document.getElementById('themeQuick');
-  wrap.innerHTML = THEME_ORDER.map(k=>{
-    const t = THEMES[k];
-    const active = STATE.settings.theme===k ? 'active' : '';
-    return `<button class="${active}" data-theme="${k}" title="${t.label}" style="background:${t.accent}"></button>`;
-  }).join('');
-  wrap.querySelectorAll('button').forEach(b=>{
-    b.addEventListener('click', ()=>{
-      applyTheme(b.dataset.theme);
-      renderThemeQuick();
-      renderAll();
-    });
-  });
-}
 
 /* =========================================================================
    SEED DATA — weeks 1-4 are the real recorded values from the uploaded
@@ -1012,32 +985,15 @@ function renderToday(){
   grid.querySelectorAll('.today-card').forEach(card=>{
     const key = card.dataset.card;
     const cat = CATEGORIES.find(c=>c.key===key);
-    const slider = card.querySelector('[data-slider]');
-
-    slider.addEventListener('input', ()=>{
-      const v = roundQuarter(parseFloat(slider.value));
-      STATE.weeks[weekIdx].days[dayIdx][key] = isNaN(v) ? null : Math.max(0,v);
-      saveState();
-      refreshTodayCard(card, cat, weekIdx, dayIdx);
-    });
 
     card.querySelectorAll('.stepper').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const cur = STATE.weeks[weekIdx].days[dayIdx][key] ?? 0;
         const next = Math.max(0, roundQuarter(cur + (btn.dataset.dir==='1' ? 0.25 : -0.25)));
         STATE.weeks[weekIdx].days[dayIdx][key] = next;
-        slider.value = next;
         saveState();
         refreshTodayCard(card, cat, weekIdx, dayIdx);
       });
-    });
-
-    const clearBtn = card.querySelector('[data-clear]');
-    clearBtn.addEventListener('click', ()=>{
-      STATE.weeks[weekIdx].days[dayIdx][key] = null;
-      slider.value = 0;
-      saveState();
-      refreshTodayCard(card, cat, weekIdx, dayIdx);
     });
   });
 
@@ -1050,40 +1006,48 @@ function renderToday(){
   }
 }
 
+/* the value shown/edited for a cumulative category (Indulgence) is the
+   running weekly total including today, not today's entry in isolation;
+   it naturally carries day to day and only starts fresh on Monday since
+   each week's days are their own array */
+function todayDisplayValue(p, cat){
+  return cat.cumulative ? p.used : p.rawToday;
+}
+
 function todayCardHTML(cat, weekIdx, dayIdx){
   const p = categoryProgress(weekIdx, dayIdx, cat.key);
   const max = sliderMax(p.quota);
-  const val = p.rawToday ?? 0;
+  const displayVal = todayDisplayValue(p, cat);
+  const sliderVal = Math.max(0, Math.min(max, displayVal ?? 0));
   return `
-  <div class="today-card ${cat.cumulative?'today-card-cumulative':''}" data-card="${cat.key}">
+  <div class="today-card status-${p.status}" data-card="${cat.key}">
     <div class="today-card-head">
       <div class="today-cat-name">${cat.label}<span class="quota-note">${cat.cumulative ? 'weekly quota '+p.quota+' — total is for the week so far' : 'daily quota '+p.quota}</span></div>
       <div class="today-status-pill status-${p.status}" data-pill>${STATUS_LABEL[p.status]}</div>
     </div>
     <div class="today-value-row">
       <button class="stepper" data-dir="-1" aria-label="Decrease ${cat.label}">&minus;</button>
-      <div class="today-value" data-val>${p.rawToday===null ? '–' : trimNum(p.rawToday)}</div>
+      <div class="today-value" data-val>${displayVal===null ? '–' : trimNum(displayVal)}</div>
       <button class="stepper" data-dir="1" aria-label="Increase ${cat.label}">+</button>
     </div>
     <div class="slider-wrap" style="background:${sliderGradient(p.quota, max)}">
-      <input type="range" class="today-slider" data-slider min="0" max="${max}" step="0.25" value="${val}">
+      <input type="range" class="today-slider" data-slider min="0" max="${max}" step="0.25" value="${sliderVal}" tabindex="-1" aria-hidden="true">
     </div>
     <div class="today-sub" data-sub>${todaySubText(p, cat)}</div>
-    <button class="clear-btn" data-clear style="${p.rawToday===null?'visibility:hidden;':''}">Clear entry</button>
   </div>`;
 }
 
 function refreshTodayCard(card, cat, weekIdx, dayIdx){
   const p = categoryProgress(weekIdx, dayIdx, cat.key);
-  card.querySelector('[data-val]').textContent = p.rawToday===null ? '–' : trimNum(p.rawToday);
+  const max = sliderMax(p.quota);
+  const displayVal = todayDisplayValue(p, cat);
+  card.className = 'today-card status-'+p.status;
+  card.querySelector('[data-val]').textContent = displayVal===null ? '–' : trimNum(displayVal);
   const pill = card.querySelector('[data-pill]');
   pill.className = 'today-status-pill status-'+p.status;
   pill.textContent = STATUS_LABEL[p.status];
   card.querySelector('[data-sub]').textContent = todaySubText(p, cat);
-  const clearBtn = card.querySelector('[data-clear]');
-  clearBtn.style.visibility = p.rawToday===null ? 'hidden' : 'visible';
-  /* the slider's colour bands are fixed to the quota and never move,
-     so nothing else needs repainting here */
+  card.querySelector('[data-slider]').value = Math.max(0, Math.min(max, displayVal ?? 0));
 }
 
 /* =========================================================================
@@ -1301,7 +1265,6 @@ function renderSettings(){
   el.querySelectorAll('.theme-card').forEach(card=>{
     card.addEventListener('click', ()=>{
       applyTheme(card.dataset.theme);
-      renderThemeQuick();
       renderAll();
     });
   });
@@ -1345,7 +1308,6 @@ function renderSettings(){
           applyTheme(STATE.settings.theme);
           saveState();
           showToast('Backup imported');
-          renderThemeQuick();
           renderAll();
         } else showToast('That file does not look like a valid backup.');
       }catch(err){ showToast('Could not read that file.'); }
@@ -1421,19 +1383,7 @@ STATE = loadState();
 applyTheme(STATE.settings.theme);
 document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined,{weekday:'long', day:'numeric', month:'long', year:'numeric'});
 setupNav();
-renderThemeQuick();
 renderAll();
-</script>
-
-<script>
-/* Register the service worker so the app keeps working offline once it has
-   been opened at least once. Safe to no-op if the browser doesn't support it
-   or if the page is opened from a plain file:// path (SWs need http(s)). */
-if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost' || location.hostname.match(/^(\d{1,3}\.){3}\d{1,3}$/))){
-  window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('sw.js').catch(err=>console.warn('Service worker registration failed:', err));
-  });
-}
 </script>
 </body>
 </html>
