@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>Weight &amp; Waist Tracker</title>
+
+<!-- PWA: installable "Add to Home Screen" / Android package support -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2E5C42">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wt Tracker">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <style>
   :root{
     --bg:#F6F4EE;
@@ -1384,6 +1393,17 @@ applyTheme(STATE.settings.theme);
 document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined,{weekday:'long', day:'numeric', month:'long', year:'numeric'});
 setupNav();
 renderAll();
+</script>
+
+<script>
+/* Register the service worker so the app keeps working offline once it has
+   been opened at least once. Safe to no-op if the browser doesn't support it
+   or if the page is opened from a plain file:// path (SWs need http(s)). */
+if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost' || location.hostname.match(/^(\d{1,3}\.){3}\d{1,3}$/))){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(err=>console.warn('Service worker registration failed:', err));
+  });
+}
 </script>
 </body>
 </html>
