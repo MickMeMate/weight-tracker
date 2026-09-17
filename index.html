@@ -249,6 +249,17 @@
     cursor:default; box-shadow:0 1px 3px rgba(0,0,0,0.3);
   }
   .today-sub{font-size:12px; color:var(--ink-soft); text-align:center; margin-top:4px;}
+
+  .confirm-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .confirm-box{
+    background:var(--paper); color:var(--ink); border-radius:10px; padding:22px;
+    max-width:380px; width:100%; box-shadow:0 8px 30px rgba(0,0,0,0.3);
+  }
+  .confirm-box p{margin:0 0 18px; font-size:14px; line-height:1.5;}
+  .confirm-actions{display:flex; justify-content:flex-end; gap:10px;}
 </style>
 </head>
 <body>
@@ -1291,6 +1302,20 @@ function renderSettings(){
     </section>
 
     <section class="block">
+      <h2>Calendar</h2>
+      <div class="sub">The Monday your 69-week tracker begins on. Changing this shifts every week's dates but keeps all your logged data exactly where it is.</div>
+      <div class="settings-grid">
+        <div>
+          <label class="field">Week 1 start date (must be a Monday)</label>
+          <input type="date" id="setWeek1Date" value="${STATE.weeks[0].startDate}">
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+          <button class="btn secondary" id="applyWeek1DateBtn">Apply date change</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="block">
       <h2>Goals &amp; personal details</h2>
       <div class="sub">These feed the BMI, waist %, and energy-output calculations, matching the Reference tab of the original spreadsheet</div>
       <div class="settings-grid">
@@ -1342,6 +1367,32 @@ function renderSettings(){
       applyTheme(card.dataset.theme);
       renderAll();
     });
+  });
+
+  document.getElementById('applyWeek1DateBtn').addEventListener('click', ()=>{
+    const input = document.getElementById('setWeek1Date');
+    const newDate = input.value;
+    if(!newDate){ showToast('Pick a date first'); return; }
+    const dow = new Date(newDate+'T00:00:00').getDay(); /* 0=Sun ... 1=Mon */
+    if(dow !== 1){
+      showToast('That date is not a Monday — pick a Monday');
+      input.value = STATE.weeks[0].startDate;
+      return;
+    }
+    const oldFirstMonday = STATE.weeks[0].startDate;
+    if(newDate === oldFirstMonday) return;
+    const shiftDays = daysBetweenISO(oldFirstMonday, newDate);
+    showConfirm(
+      `This shifts every week's dates by ${shiftDays>0?'+':''}${shiftDays} day(s), starting Week 1 on ${fmtDate(newDate)}. `+
+      `All your logged weigh-ins and food entries stay exactly where they are (same week number) — only the calendar dates change. Continue?`,
+      ()=>{
+        STATE.weeks.forEach(w=>{ w.startDate = addDaysISO(w.startDate, shiftDays); });
+        currentWeekIdx = null; /* re-derive from the new calendar rather than an old index */
+        saveState();
+        showToast('Week 1 date updated');
+        renderAll();
+      }
+    );
   });
 
   el.querySelectorAll('#setGoalWeight,#setGoalWaist,#setHeight,#setAge,#setAspiration').forEach(inp=>{
@@ -1406,7 +1457,7 @@ function renderSettings(){
     reader.readAsText(file);
   });
   document.getElementById('resetBtn').addEventListener('click', ()=>{
-    if(confirm('This clears everything in this browser and restores the four sample weeks. Continue?')){
+    showConfirm('This clears everything in this browser and restores the four sample weeks. Continue?', ()=>{
       const keepTheme = STATE.settings.theme;
       STATE = buildDefaultState();
       STATE.settings.theme = keepTheme;
@@ -1414,7 +1465,7 @@ function renderSettings(){
       currentWeekIdx = null;
       renderAll();
       showToast('Data reset');
-    }
+    });
   });
 }
 
@@ -1435,6 +1486,30 @@ function showToast(msg){
   t.classList.add('show');
   clearTimeout(showToast._h);
   showToast._h = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* Replaces window.confirm(), which is unreliable inside installed PWAs and
+   Android TWA wrappers (often silently suppressed or auto-dismissed). Shows
+   an in-app overlay instead; onConfirm runs only if the person taps Confirm. */
+function showConfirm(message, onConfirm){
+  const overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.innerHTML = `
+    <div class="confirm-box">
+      <p>${message}</p>
+      <div class="confirm-actions">
+        <button class="btn ghost" data-act="cancel">Cancel</button>
+        <button class="btn" data-act="confirm">Confirm</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = ()=> overlay.remove();
+  overlay.querySelector('[data-act="cancel"]').addEventListener('click', close);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) close(); });
+  overlay.querySelector('[data-act="confirm"]').addEventListener('click', ()=>{
+    close();
+    onConfirm();
+  });
 }
 
 function renderAll(){
