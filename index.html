@@ -387,49 +387,6 @@ function applyTheme(key){
 function themeVar(name){ return getComputedStyle(document.documentElement).getPropertyValue('--'+name).trim(); }
 
 /* =========================================================================
-   SEED DATA — weeks 1-4 are the real recorded values from the uploaded
-   spreadsheet. Weeks 5-69 start blank, ready to fill in.
-   ========================================================================= */
-const SEED_WEEKS_RAW = [
-  { startDate:'2026-08-17', startWeight:96.5, startWaist:110, activity:'Sedentary', days:[
-    {protein:4,   bread:2, cereal:1,    fruit:2, dairy:2, veg:2, salad:0.5, fat:3, indulgence:1},
-    {protein:3.5, bread:2, cereal:1,    fruit:2, dairy:3, veg:2, salad:1,   fat:3, indulgence:0},
-    {protein:3.5, bread:3, cereal:1.25, fruit:1, dairy:2, veg:2, salad:0.5, fat:2, indulgence:2},
-    {protein:1.5, bread:2, cereal:1,    fruit:2, dairy:2, veg:2, salad:0.5, fat:2, indulgence:0},
-    {protein:3,   bread:2, cereal:1,    fruit:2, dairy:3, veg:2, salad:0.5, fat:2, indulgence:2},
-    {protein:3,   bread:2, cereal:1.25, fruit:2, dairy:2, veg:2, salad:0.5, fat:2, indulgence:2},
-    {protein:2,   bread:2, cereal:1.25, fruit:2, dairy:1, veg:1, salad:null,fat:2, indulgence:2}
-  ]},
-  { startDate:'2026-08-24', startWeight:94.8, startWaist:109, activity:'Sedentary', days:[
-    {protein:4,   bread:2,   cereal:1,    fruit:2, dairy:2, veg:2,   salad:0,   fat:2, indulgence:0},
-    {protein:3.5, bread:2,   cereal:1,    fruit:2, dairy:3, veg:2,   salad:2,   fat:2, indulgence:3},
-    {protein:1.5, bread:null,cereal:1.25, fruit:1, dairy:2, veg:0.5, salad:0.5, fat:3, indulgence:0},
-    {protein:3.5, bread:2,   cereal:1.25, fruit:2, dairy:3, veg:2,   salad:1,   fat:3, indulgence:0},
-    {protein:4,   bread:2,   cereal:1,    fruit:2, dairy:3, veg:2,   salad:0.5, fat:3, indulgence:0},
-    {protein:4.5, bread:3,   cereal:1.25, fruit:2, dairy:1, veg:1.5, salad:0.5, fat:3, indulgence:0},
-    {protein:5,   bread:2,   cereal:1.25, fruit:2, dairy:3, veg:1,   salad:0,   fat:3, indulgence:12}
-  ]},
-  { startDate:'2026-08-31', startWeight:94.6, startWaist:109, activity:'Sedentary', days:[
-    {protein:3,   bread:0, cereal:1,    fruit:2, dairy:3, veg:2, salad:0,   fat:3, indulgence:0},
-    {protein:3,   bread:2, cereal:1,    fruit:2, dairy:3, veg:2, salad:0.5, fat:2, indulgence:2},
-    {protein:4,   bread:2, cereal:1,    fruit:2, dairy:4, veg:2, salad:0.5, fat:2, indulgence:0},
-    {protein:3.5, bread:2, cereal:1.25, fruit:2, dairy:3, veg:2, salad:0.5, fat:2, indulgence:1},
-    {protein:5.5, bread:1, cereal:1,    fruit:1, dairy:3, veg:2, salad:1,   fat:2, indulgence:0},
-    {protein:2,   bread:2, cereal:1.25, fruit:1, dairy:3, veg:1, salad:0.5, fat:1, indulgence:4.5},
-    {protein:4,   bread:3, cereal:null, fruit:1, dairy:3, veg:1, salad:0.5, fat:3, indulgence:5}
-  ]},
-  { startDate:'2026-09-07', startWeight:94.2, startWaist:109, activity:'Sedentary', days:[
-    {protein:3,   bread:2,    cereal:1,    fruit:2, dairy:2,    veg:2,   salad:0.5, fat:1, indulgence:0},
-    {protein:4,   bread:2,    cereal:1,    fruit:2, dairy:3,    veg:2,   salad:0.5, fat:1, indulgence:0},
-    {protein:4,   bread:2,    cereal:1,    fruit:2, dairy:3,    veg:1.5, salad:0.5, fat:2, indulgence:1},
-    {protein:4.5, bread:3,    cereal:1,    fruit:2, dairy:3,    veg:2,   salad:1,   fat:4, indulgence:1},
-    {protein:3.5, bread:2,    cereal:1,    fruit:2, dairy:3,    veg:2,   salad:0.5, fat:2, indulgence:0},
-    {protein:4,   bread:3,    cereal:1.25, fruit:2, dairy:3,    veg:2,   salad:0.5, fat:3, indulgence:6},
-    {protein:0.5, bread:null, cereal:1,    fruit:1, dairy:null, veg:null,salad:null,fat:1, indulgence:null}
-  ]}
-];
-
-/* =========================================================================
    STATE
    ========================================================================= */
 let STATE = null;
@@ -441,19 +398,25 @@ function addDaysISO(iso, n){
     and silently shifts a day for any positive UTC-offset timezone, e.g. Perth) */
 }
 
+/* Monday of the current week (or today, if today is itself a Monday) — the
+   sensible starting point for a brand-new, empty tracker. Change it anytime
+   from Settings \u2192 Calendar. */
+function defaultWeek1Monday(){
+  const today = new Date();
+  const dow = today.getDay(); /* 0=Sun ... 6=Sat */
+  const daysSinceMonday = (dow===0) ? 6 : dow-1;
+  const monday = new Date(today);
+  monday.setDate(monday.getDate() - daysSinceMonday);
+  return localISODate(monday);
+}
+
 function buildDefaultState(){
   const weeks = [];
-  let cursor = SEED_WEEKS_RAW[0].startDate;
+  let cursor = defaultWeek1Monday();
   for(let i=0;i<TOTAL_WEEKS;i++){
-    if(i < SEED_WEEKS_RAW.length){
-      const s = SEED_WEEKS_RAW[i];
-      weeks.push({ startDate:s.startDate, startWeight:s.startWeight, startWaist:s.startWaist, activity:s.activity, days:s.days.map(d=>({...d})) });
-      cursor = s.startDate;
-    } else {
-      cursor = addDaysISO(cursor,7);
-      weeks.push({ startDate:cursor, startWeight:null, startWaist:null, activity:null,
-        days:Array.from({length:7},()=>Object.fromEntries(CATEGORIES.map(c=>[c.key,null]))) });
-    }
+    if(i>0) cursor = addDaysISO(cursor,7);
+    weeks.push({ startDate:cursor, startWeight:null, startWaist:null, activity:null,
+      days:Array.from({length:7},()=>Object.fromEntries(CATEGORIES.map(c=>[c.key,null]))) });
   }
   return {
     settings:{
@@ -1457,7 +1420,7 @@ function renderSettings(){
     reader.readAsText(file);
   });
   document.getElementById('resetBtn').addEventListener('click', ()=>{
-    showConfirm('This clears everything in this browser and restores the four sample weeks. Continue?', ()=>{
+    showConfirm('This permanently clears everything in this browser and starts a blank tracker. Make sure you\u2019ve exported a backup first if you want to keep your data. Continue?', ()=>{
       const keepTheme = STATE.settings.theme;
       STATE = buildDefaultState();
       STATE.settings.theme = keepTheme;
