@@ -4,7 +4,7 @@
    All real data still lives in localStorage on the device — this worker
    never touches app data, only the static files (html/manifest/icons). */
 
-const CACHE_NAME = 'weight-tracker-v3'; /* bump this string whenever you redeploy index.html so the new version is fetched */
+const CACHE_NAME = 'weight-tracker-v4'; /* bump this string whenever you redeploy index.html so the new version is fetched */
 const APP_SHELL = [
   './',
   './index.html',
