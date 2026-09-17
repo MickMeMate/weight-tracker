@@ -155,6 +155,10 @@
   .settings-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:14px 20px;}
   @media (max-width:640px){ .settings-grid{grid-template-columns:1fr;} }
   .quota-row{display:grid; grid-template-columns:1.4fr 0.8fr; gap:10px; align-items:center; padding:6px 0;}
+  .quota-prompt-banner{
+    background:var(--warn-soft); border:1px solid var(--warn); border-radius:8px;
+    padding:12px 16px; margin-bottom:14px; font-size:13px; color:var(--ink); line-height:1.5;
+  }
 
   .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft); margin-top:10px;}
   .legend span{display:inline-flex;align-items:center;gap:5px;}
@@ -311,6 +315,17 @@ const ACTIVITY_FACTORS = {
   'Extremely Active': 1.9
 };
 const ACTIVITY_ORDER = ['Sedentary','Lightly Active','Moderately Active','Very Active','Extremely Active'];
+
+/* Preset daily quota levels, each tuned to roughly the stated energy intake.
+   Selecting one fills in the category quotas below; you can still fine-tune
+   individual categories afterward. */
+const QUOTA_PRESETS = [
+  { kj:5500, quotas:{ protein:3,   bread:2, cereal:1,    fruit:2, dairy:2, veg:2, salad:0.5, fat:3, indulgence:2 } },
+  { kj:6000, quotas:{ protein:3,   bread:2, cereal:1,    fruit:2, dairy:2, veg:2, salad:0.5, fat:3, indulgence:9 } },
+  { kj:7000, quotas:{ protein:3.5, bread:2, cereal:1.25, fruit:2, dairy:3, veg:2, salad:0.5, fat:3, indulgence:9 } },
+  { kj:8000, quotas:{ protein:4,   bread:2, cereal:1.25, fruit:2, dairy:3, veg:2, salad:0.5, fat:3, indulgence:9 } }
+];
+const QUOTA_PROMPT_THRESHOLD_KJ = 100; /* prompt to reconsider the quota level once the gap to calculated energy output falls under this */
 const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const TOTAL_WEEKS = 69;
 const STORAGE_KEY = 'weightTrackerData_v1';
@@ -330,11 +345,15 @@ const THEMES = {
   meadow:   { label:'Meadow',   group:'Light', bg:'#F6F4EE', paper:'#FFFFFF', ink:'#20281F', inkSoft:'#5B665A', inkFaint:'#93998F', line:'#DAD6C8', accent:'#2E5C42', accentSoft:'#DCE7DC', accentPale:'#EEF3EB', warn:'#A8462F', warnSoft:'#F3E1DB', highlight:'#8A6A1D', highlightSoft:'#F1E9D2' },
   sunset:   { label:'Sunset',   group:'Light', bg:'#FBF2EA', paper:'#FFFFFF', ink:'#3A2418', inkSoft:'#7C5C46', inkFaint:'#B4917A', line:'#EBD9C6', accent:'#D65B2A', accentSoft:'#F8E0CE', accentPale:'#FCEEE3', warn:'#B23A48', warnSoft:'#F6DEE0', highlight:'#2E6E62', highlightSoft:'#DDEDE9' },
   ocean:    { label:'Ocean',    group:'Light', bg:'#EFF6F8', paper:'#FFFFFF', ink:'#0E2733', inkSoft:'#3D6373', inkFaint:'#89A9B3', line:'#CFE3E8', accent:'#0E7AA6', accentSoft:'#D2E9F0', accentPale:'#E9F4F7', warn:'#C1553B', warnSoft:'#F5DED7', highlight:'#B98A1E', highlightSoft:'#F3E7CB' },
+  lavender: { label:'Lavender', group:'Light', bg:'#F6F2FA', paper:'#FFFFFF', ink:'#2A1F35', inkSoft:'#6B5C7A', inkFaint:'#A297AD', line:'#E3D9EC', accent:'#7B4FBF', accentSoft:'#E7DBF5', accentPale:'#F3EDFA', warn:'#B0453F', warnSoft:'#F5DEDB', highlight:'#3E7A6A', highlightSoft:'#DCEAE6' },
+  clay:     { label:'Clay',     group:'Light', bg:'#FBF1E7', paper:'#FFFFFF', ink:'#3B2A1E', inkSoft:'#7A6350', inkFaint:'#B39A85', line:'#EAD9C9', accent:'#9C5B3C', accentSoft:'#ECD9CD', accentPale:'#F7EDE6', warn:'#A03A3A', warnSoft:'#F3DBDB', highlight:'#6B7A3A', highlightSoft:'#E5E8D4' },
   midnight: { label:'Midnight', group:'Dark',  bg:'#111417', paper:'#181C20', ink:'#EDEFEA', inkSoft:'#A9B0AC', inkFaint:'#6E7672', line:'#2B3136', accent:'#45D6A6', accentSoft:'#1B3A30', accentPale:'#152420', warn:'#FF7A66', warnSoft:'#3A211D', highlight:'#F2C14E', highlightSoft:'#39301A' },
   berry:    { label:'Berry',    group:'Dark',  bg:'#17111A', paper:'#211826', ink:'#F3E9F6', inkSoft:'#BA9FBF', inkFaint:'#7E6B84', line:'#362640', accent:'#EA5FA3', accentSoft:'#3B1E32', accentPale:'#261622', warn:'#FF8266', warnSoft:'#3B2318', highlight:'#F2C14E', highlightSoft:'#342A17' },
-  spruce:   { label:'Spruce',   group:'Dark',  bg:'#0F1613', paper:'#161F1B', ink:'#E7F0EA', inkSoft:'#9CB0A5', inkFaint:'#5F7369', line:'#233029', accent:'#5FD3A2', accentSoft:'#1B3327', accentPale:'#132420', warn:'#FF8B6B', warnSoft:'#38251E', highlight:'#E8C25E', highlightSoft:'#332C18' }
+  spruce:   { label:'Spruce',   group:'Dark',  bg:'#0F1613', paper:'#161F1B', ink:'#E7F0EA', inkSoft:'#9CB0A5', inkFaint:'#5F7369', line:'#233029', accent:'#5FD3A2', accentSoft:'#1B3327', accentPale:'#132420', warn:'#FF8B6B', warnSoft:'#38251E', highlight:'#E8C25E', highlightSoft:'#332C18' },
+  bumblebee:{ label:'Bumblebee',group:'Dark',  bg:'#0D0D0A', paper:'#17170F', ink:'#F5F2E8', inkSoft:'#B8B49C', inkFaint:'#726F5E', line:'#3A3626', accent:'#F4D000', accentSoft:'#3D3510', accentPale:'#242010', warn:'#FF7A66', warnSoft:'#3A211D', highlight:'#F2C14E', highlightSoft:'#39301A' },
+  amethyst: { label:'Amethyst', group:'Dark',  bg:'#17131C', paper:'#201A29', ink:'#F1EAF5', inkSoft:'#B6A3C2', inkFaint:'#7A6A85', line:'#352A40', accent:'#B27BFF', accentSoft:'#2E2140', accentPale:'#1F1729', warn:'#FF7A66', warnSoft:'#3A211D', highlight:'#F2C14E', highlightSoft:'#39301A' }
 };
-const THEME_ORDER = ['meadow','sunset','ocean','midnight','berry','spruce'];
+const THEME_ORDER = ['meadow','sunset','ocean','lavender','clay','midnight','berry','spruce','bumblebee','amethyst'];
 
 function applyTheme(key){
   const t = THEMES[key] || THEMES.meadow;
@@ -427,7 +446,8 @@ function buildDefaultState(){
   }
   return {
     settings:{
-      height:176, age:50, goalWeight:80, goalWaist:90, aspirationRate:0.2, theme:'meadow',
+      height:176, age:50, sex:'male', goalWeight:80, goalWaist:90, aspirationRate:0.2, theme:'meadow',
+      quotaLevel:8000,
       quotas:Object.fromEntries(CATEGORIES.map(c=>[c.key,c.quota]))
     },
     weeks
@@ -441,6 +461,8 @@ function loadState(){
       const parsed = JSON.parse(raw);
       if(parsed && parsed.weeks && parsed.weeks.length===TOTAL_WEEKS){
         if(!parsed.settings.theme) parsed.settings.theme='meadow';
+        if(!parsed.settings.sex) parsed.settings.sex='male';
+        if(!parsed.settings.quotaLevel) parsed.settings.quotaLevel=8000;
         return parsed;
       }
     }
@@ -467,7 +489,10 @@ function weekMetrics(i){
   const whtr = hasWaist ? (w.startWaist / s.height) : null;
   let energy = null;
   if(hasWeight && w.activity && ACTIVITY_FACTORS[w.activity]){
-    energy = Math.trunc(((66.47 + 13.75*w.startWeight + 880 - 6.76*s.age) * 4.2) * ACTIVITY_FACTORS[w.activity]);
+    const bmr = s.sex==='female'
+      ? (655.1 + 9.56*w.startWeight + 1.85*s.height - 4.68*s.age)
+      : (66.47 + 13.75*w.startWeight + 5*s.height - 6.76*s.age);
+    energy = Math.trunc(bmr * 4.2 * ACTIVITY_FACTORS[w.activity]);
   }
   const difference = hasWeight ? (w.startWeight - s.goalWeight) : null;
   return { date:w.startDate, weight:w.startWeight, waist:w.startWaist, activity:w.activity, bmi, waistPct, whtr, energy, difference };
@@ -503,6 +528,34 @@ function lastLoggedWeekIndex(){
 function nextUnloggedWeekIndex(){
   const last = lastLoggedWeekIndex();
   return Math.min(last+1, TOTAL_WEEKS-1);
+}
+
+/* Checks whether the calculated energy output has drifted close to the
+   currently selected quota level — if the gap is under the threshold, the
+   deficit that drives weight loss is shrinking and it's worth stepping down
+   to a lower quota preset. Returns null when there's nothing to flag. */
+function quotaPromptCheck(){
+  const idx = lastLoggedWeekIndex();
+  if(idx < 0) return null;
+  const energy = weekMetrics(idx).energy;
+  if(energy === null) return null;
+  const level = STATE.settings.quotaLevel;
+  const diff = energy - level;
+  if(Math.abs(diff) >= QUOTA_PROMPT_THRESHOLD_KJ) return null;
+  const lower = QUOTA_PRESETS.filter(p=>p.kj < level).sort((a,b)=>b.kj-a.kj)[0] || null;
+  return { energy, level, diff, lower };
+}
+
+function quotaPromptBannerHtml(){
+  const prompt = quotaPromptCheck();
+  if(!prompt) return '';
+  const gap = Math.abs(prompt.diff);
+  const suggestion = prompt.lower
+    ? `Consider stepping down to the <strong>${prompt.lower.kj.toLocaleString()} kJ</strong> quota level to keep a bigger deficit.`
+    : `You're already on the lowest quota level here — worth reviewing with whatever plan or professional guidance you're following.`;
+  return `<div class="quota-prompt-banner">
+    Your calculated energy output (${prompt.energy.toLocaleString()} kJ) is only ${gap.toLocaleString()} kJ from your current ${prompt.level.toLocaleString()} kJ quota level. ${suggestion}
+  </div>`;
 }
 
 function dayRemaining(weekIdx, catKey, dayIdx){
@@ -1241,6 +1294,12 @@ function renderSettings(){
       <h2>Goals &amp; personal details</h2>
       <div class="sub">These feed the BMI, waist %, and energy-output calculations, matching the Reference tab of the original spreadsheet</div>
       <div class="settings-grid">
+        <div><label class="field">Sex</label>
+          <select id="setSex">
+            <option value="male" ${s.sex==='male'?'selected':''}>Male</option>
+            <option value="female" ${s.sex==='female'?'selected':''}>Female</option>
+          </select>
+        </div>
         <div><label class="field">Goal weight (kg)</label><input type="number" step="0.1" id="setGoalWeight" value="${s.goalWeight}"></div>
         <div><label class="field">Goal waist (cm)</label><input type="number" step="0.5" id="setGoalWaist" value="${s.goalWaist}"></div>
         <div><label class="field">Height (cm)</label><input type="number" step="0.5" id="setHeight" value="${s.height}"></div>
@@ -1252,6 +1311,13 @@ function renderSettings(){
     <section class="block">
       <h2>Daily quotas</h2>
       <div class="sub">Units per day for each food category (Indulgence accumulates for the week)</div>
+      <div style="margin-bottom:16px;">
+        <label class="field">Quota level</label>
+        <select id="setQuotaLevel" style="max-width:260px;">
+          ${QUOTA_PRESETS.map(p=>`<option value="${p.kj}" ${s.quotaLevel===p.kj?'selected':''}>${p.kj.toLocaleString()} kJ</option>`).join('')}
+        </select>
+      </div>
+      ${quotaPromptBannerHtml()}
       ${CATEGORIES.map(c=>`
         <div class="quota-row">
           <div>${c.label}</div>
@@ -1286,7 +1352,23 @@ function renderSettings(){
       s.age        = parseFloat(document.getElementById('setAge').value)||s.age;
       s.aspirationRate = parseFloat(document.getElementById('setAspiration').value)||s.aspirationRate;
       saveState(); showToast('Settings saved');
+      renderSettings(); /* height/age feed the energy calc, which the quota-level prompt above depends on */
     });
+  });
+  document.getElementById('setSex').addEventListener('change', e=>{
+    s.sex = e.target.value;
+    saveState(); showToast('Settings saved');
+    renderSettings();
+  });
+  document.getElementById('setQuotaLevel').addEventListener('change', e=>{
+    const kj = parseInt(e.target.value, 10);
+    const preset = QUOTA_PRESETS.find(p=>p.kj===kj);
+    if(preset){
+      s.quotaLevel = kj;
+      Object.assign(s.quotas, preset.quotas);
+      saveState(); showToast(`Switched to the ${kj.toLocaleString()} kJ quota level`);
+      renderSettings();
+    }
   });
   el.querySelectorAll('[data-quota]').forEach(inp=>{
     inp.addEventListener('change', ()=>{
