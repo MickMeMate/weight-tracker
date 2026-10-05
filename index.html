@@ -70,7 +70,10 @@
   /* ---------- generic building blocks ---------- */
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
   @media (max-width:760px){ .grid2,.grid3{grid-template-columns:1fr;} }
+  @media (max-width:900px){ .grid4{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:480px){ .grid4{grid-template-columns:1fr;} }
 
   section.block{
     border:1px solid var(--line); background:var(--paper); border-radius:8px;
@@ -253,6 +256,22 @@
   }
   .today-sub{font-size:12px; color:var(--ink-soft); text-align:center; margin-top:4px;}
 
+  /* ---------- Exercise view ---------- */
+  .exercise-row{display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line);}
+  .exercise-row:last-child{border-bottom:none;}
+  .exercise-desc{flex:1; min-width:0;}
+  .exercise-mins{width:auto; min-width:100px; flex-shrink:0;}
+  .exercise-remove{
+    background:none; border:1px solid var(--line); color:var(--ink-faint); border-radius:50%;
+    width:32px; height:32px; flex-shrink:0; font-size:18px; line-height:1; cursor:pointer;
+  }
+  .exercise-remove:hover{border-color:var(--warn); color:var(--warn);}
+  .exercise-total{
+    margin-top:16px; padding-top:14px; border-top:1px solid var(--line);
+    font-size:15px; color:var(--ink); text-align:right;
+  }
+  .exercise-total strong{font-family:var(--serif); font-size:20px; color:var(--accent);}
+
   .confirm-overlay{
     position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000;
     display:flex; align-items:center; justify-content:center; padding:20px;
@@ -279,6 +298,7 @@
   <nav class="tabs">
     <button data-view="dash" class="active">Dashboard</button>
     <button data-view="today">Today</button>
+    <button data-view="exercise">Exercise</button>
     <button data-view="week">This Week</button>
     <button data-view="history">Log Book</button>
     <button data-view="settings">Settings</button>
@@ -289,6 +309,9 @@
 
   <!-- ================= TODAY ================= -->
   <div class="view" id="view-today"></div>
+
+  <!-- ================= EXERCISE ================= -->
+  <div class="view" id="view-exercise"></div>
 
   <!-- ================= WEEK ================= -->
   <div class="view" id="view-week"></div>
@@ -348,6 +371,7 @@ const QUOTA_PRESETS = [
 ];
 const QUOTA_PROMPT_THRESHOLD_KJ = 100; /* prompt to reconsider the quota level once the gap to calculated energy output falls under this */
 const DAY_NAMES = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const EXERCISE_MINUTE_OPTIONS = [15,30,45,60,75,90,105,120,135,150,165,180,195,210,225,240];
 const TOTAL_WEEKS = 69;
 const STORAGE_KEY = 'weightTrackerData_v1';
 const WAIST_HEIGHT_GOAL_PCT = 50; /* the "keep your waist under half your height" target */
@@ -426,16 +450,27 @@ function buildDefaultState(){
   for(let i=0;i<TOTAL_WEEKS;i++){
     if(i>0) cursor = addDaysISO(cursor,7);
     weeks.push({ startDate:cursor, startWeight:null, startWaist:null, activity:null,
-      days:Array.from({length:7},()=>Object.fromEntries(CATEGORIES.map(c=>[c.key,null]))) });
+      days:Array.from({length:7},()=>Object.assign(Object.fromEntries(CATEGORIES.map(c=>[c.key,null])), {exercise:[]})) });
   }
   return {
     settings:{
-      height:176, age:50, sex:'male', goalWeight:80, goalWaist:90, aspirationRate:0.2, theme:'meadow',
+      height:176, age:50, sex:'male', goalWeight:80, goalWaist:90, aspirationRate:0.2, aspirationRateWaist:0.3, theme:'meadow',
       quotaLevel:8000,
       quotas:Object.fromEntries(CATEGORIES.map(c=>[c.key,c.quota]))
     },
     weeks
   };
+}
+
+/* Fills in any settings fields missing from an older save/export so loading
+   or importing one never crashes or silently produces NaN/undefined —
+   used both for localStorage loads and for Settings > Import backup. */
+function backfillSettings(settings){
+  if(!settings.theme) settings.theme='meadow';
+  if(!settings.sex) settings.sex='male';
+  if(!settings.quotaLevel) settings.quotaLevel=8000;
+  if(typeof settings.aspirationRateWaist !== 'number') settings.aspirationRateWaist=0.3;
+  return settings;
 }
 
 function loadState(){
@@ -444,9 +479,7 @@ function loadState(){
     if(raw){
       const parsed = JSON.parse(raw);
       if(parsed && parsed.weeks && parsed.weeks.length===TOTAL_WEEKS){
-        if(!parsed.settings.theme) parsed.settings.theme='meadow';
-        if(!parsed.settings.sex) parsed.settings.sex='male';
-        if(!parsed.settings.quotaLevel) parsed.settings.quotaLevel=8000;
+        backfillSettings(parsed.settings);
         return parsed;
       }
     }
@@ -490,16 +523,39 @@ function weekDelta(i){
   return a.startWeight - b.startWeight;
 }
 
+/* same shifted definition as weekDelta, but for waist */
+function waistDelta(i){
+  const a = STATE.weeks[i], b = STATE.weeks[i+1];
+  if(!b || typeof a.startWaist !== 'number' || typeof b.startWaist !== 'number') return null;
+  return a.startWaist - b.startWaist;
+}
+
 /* aspirational weight: actual once known, otherwise a straight-line
    decline from the last known actual at the configured weekly rate */
 function aspirationalSeries(){
-  const out = [];
-  let last = null;
+  return linearAspirationalSeries(w=>w.startWeight, STATE.settings.aspirationRate);
+}
+
+/* same idea as aspirationalSeries, but for waist (cm) at the configured
+   aspirational weekly reduction rate */
+function aspirationalWaistSeries(){
+  return linearAspirationalSeries(w=>w.startWaist, STATE.settings.aspirationRateWaist);
+}
+
+/* A genuinely linear reference line: anchored at whichever week first has a
+   real reading, then declining by a fixed amount per week from there on —
+   independent of what actually happened week to week. This is what makes it
+   useful to compare against the real (wavy) line, rather than it just
+   tracking the real value every week it exists (which it used to do). */
+function linearAspirationalSeries(getValue, ratePerWeek){
+  let anchorIdx = -1, anchorVal = null;
   for(let i=0;i<STATE.weeks.length;i++){
-    const w = STATE.weeks[i];
-    if(typeof w.startWeight === 'number'){ last = w.startWeight; out.push(w.startWeight); }
-    else if(last !== null){ last = last - STATE.settings.aspirationRate; out.push(last); }
-    else out.push(null);
+    const v = getValue(STATE.weeks[i]);
+    if(typeof v === 'number'){ anchorIdx = i; anchorVal = v; break; }
+  }
+  const out = [];
+  for(let i=0;i<STATE.weeks.length;i++){
+    out.push(anchorVal===null || i<anchorIdx ? null : anchorVal - ratePerWeek*(i-anchorIdx));
   }
   return out;
 }
@@ -816,6 +872,29 @@ function renderBmiGauge(container, bmi){
   container.appendChild(svg);
 }
 
+/* same visual language as the BMI gauge, but for waist-to-height ratio,
+   shown as a percentage with its guideline zone label underneath */
+function renderWhtrGauge(container, whtr){
+  container.innerHTML='';
+  let zone = WHTR_ZONE_LABELS[1], color=themeVar('accent');
+  if(whtr < WHTR_LOW){ zone=WHTR_ZONE_LABELS[0]; color=themeVar('highlight'); }
+  else if(whtr < WHTR_HEALTHY_MAX){ zone=WHTR_ZONE_LABELS[1]; color=themeVar('accent'); }
+  else if(whtr < WHTR_ELEVATED_MAX){ zone=WHTR_ZONE_LABELS[2]; color=themeVar('highlight'); }
+  else { zone=WHTR_ZONE_LABELS[3]; color=themeVar('warn'); }
+  const size=120;
+  const svg = svgEl('svg',{viewBox:`0 0 ${size} ${size}`, width:size, height:size});
+  const r=size/2-10, cx=size/2, cy=size/2;
+  svg.appendChild(svgEl('circle',{cx,cy,r,fill:'none',stroke:themeVar('accent-pale'),'stroke-width':14}));
+  svg.appendChild(svgEl('circle',{cx,cy,r,fill:'none',stroke:color,'stroke-width':14,'stroke-dasharray':`${2*Math.PI*r*0.75} ${2*Math.PI*r}`,'stroke-linecap':'round',transform:`rotate(-225 ${cx} ${cy})`}));
+  const txt = svgEl('text',{x:cx,y:cy,'text-anchor':'middle','font-size':20,'font-family':'Georgia, serif',fill:themeVar('ink')});
+  txt.textContent = (whtr*100).toFixed(1)+'%';
+  svg.appendChild(txt);
+  const txt2 = svgEl('text',{x:cx,y:cy+18,'text-anchor':'middle','font-size':10,fill:themeVar('ink-soft')});
+  txt2.textContent = zone;
+  svg.appendChild(txt2);
+  container.appendChild(svg);
+}
+
 /* =========================================================================
    VIEW: DASHBOARD
    ========================================================================= */
@@ -871,8 +950,9 @@ function renderDash(){
       </section>
     </div>
 
-    <div class="grid3">
+    <div class="grid4">
       <section class="block"><h2>BMI</h2><div class="sub">Current: ${cur.bmi.toFixed(1)}</div><div id="donutBmiWrap" style="display:flex;justify-content:center;"></div></section>
+      <section class="block"><h2>Waist-to-height</h2><div class="sub">Current ratio</div><div id="gaugeWhtrWrap" style="display:flex;justify-content:center;"></div></section>
       <section class="block"><h2>Weight goal progress</h2><div class="sub">Achieved vs remaining</div><div id="donutWeightWrap" style="display:flex;justify-content:center;"></div></section>
       <section class="block"><h2>Waist goal progress</h2><div class="sub">Achieved vs remaining (vs the 50% target)</div><div id="donutWaistWrap" style="display:flex;justify-content:center;"></div></section>
     </div>
@@ -926,6 +1006,7 @@ function renderDash(){
   `;
 
   renderBmiGauge(document.getElementById('donutBmiWrap'), cur.bmi);
+  renderWhtrGauge(document.getElementById('gaugeWhtrWrap'), cur.whtr);
   donut(document.getElementById('donutWeightWrap'), {achieved:weightAchievedPct});
   donut(document.getElementById('donutWaistWrap'), {achieved:waistAchievedPct});
 
@@ -935,7 +1016,8 @@ function renderDash(){
     <span><span class="swatch" style="background:${highlight}"></span>Aspirational trend</span>
     <span><span class="swatch" style="background:${warn}"></span>Goal (${s.goalWeight}kg)</span>`;
   document.getElementById('legendWaist').innerHTML = `
-    <span><span class="swatch" style="background:${accent}"></span>Waist (cm)</span>
+    <span><span class="swatch" style="background:${accent}"></span>Actual waist</span>
+    <span><span class="swatch" style="background:${highlight}"></span>Aspirational trend</span>
     <span><span class="swatch" style="background:${warn}"></span>Goal (${s.goalWaist}cm)</span>`;
 
   const labels = STATE.weeks.map((w,i)=>'W'+(i+1));
@@ -952,8 +1034,12 @@ function renderDash(){
   });
 
   const waistCmSeries = STATE.weeks.slice(0,upto).map(w=> typeof w.startWaist==='number'? w.startWaist: null);
+  const aspWaistSeries = aspirationalWaistSeries().slice(0,upto);
   lineChart(document.getElementById('chartWaist'), {
-    series:[{points:waistCmSeries, color:accent, width:2.4}],
+    series:[
+      {points:waistCmSeries, color:accent, width:2.4},
+      {points:aspWaistSeries, color:highlight, width:1.6, dash:'5,4', dots:false}
+    ],
     labels:labels.slice(0,upto),
     refLine: s.goalWaist,
     yFormat:v=>v.toFixed(0)+'cm'
@@ -1097,6 +1183,113 @@ function refreshTodayCard(card, cat, weekIdx, dayIdx){
 }
 
 /* =========================================================================
+   VIEW: EXERCISE — free-text description + a 15-minute-increment duration,
+   multiple entries per day, with a running total. Stored as day.exercise[],
+   lazily created so older saved/imported data without this field still
+   loads fine (see exerciseEntriesFor / addDaysISO-style defaulting below).
+   ========================================================================= */
+function exerciseEntriesFor(weekIdx, dayIdx){
+  return STATE.weeks[weekIdx].days[dayIdx].exercise || [];
+}
+function exerciseTotalMinutes(weekIdx, dayIdx){
+  return exerciseEntriesFor(weekIdx, dayIdx).reduce((sum,e)=> sum + (typeof e.minutes==='number'? e.minutes:0), 0);
+}
+function weekExerciseTotalMinutes(weekIdx){
+  let total = 0;
+  for(let d=0; d<7; d++) total += exerciseTotalMinutes(weekIdx, d);
+  return total;
+}
+function formatMinutes(mins){
+  if(mins < 60) return mins+' min';
+  const h = Math.floor(mins/60), m = mins%60;
+  return m>0 ? `${h}h ${m}min` : `${h}h`;
+}
+
+function renderExercise(){
+  const el = document.getElementById('view-exercise');
+  const { weekIdx, dayIdx, todayISO, inRange } = todayLocation();
+  const entries = exerciseEntriesFor(weekIdx, dayIdx);
+  const total = exerciseTotalMinutes(weekIdx, dayIdx);
+
+  el.innerHTML = `
+    <div class="today-header">
+      <h2>${DAY_NAMES[dayIdx]}</h2>
+      <span class="sub-date">${fmtDate(todayISO)} · Week ${weekIdx+1} of ${TOTAL_WEEKS}</span>
+    </div>
+    ${!inRange ? `<div class="today-banner">Today's date falls outside the 69-week tracker, so this is showing the nearest day (Week ${weekIdx+1}, ${DAY_NAMES[dayIdx]}).</div>` : ''}
+
+    <section class="block">
+      <h2>Today's exercise</h2>
+      <div class="sub">Log as many entries as you like — walking, weights, swimming, whatever you did</div>
+      <div id="exerciseList"></div>
+      <button class="btn secondary" id="addExerciseBtn" style="margin-top:10px;">+ Add exercise</button>
+      <div class="exercise-total">Total: <strong>${formatMinutes(total)}</strong></div>
+    </section>
+  `;
+
+  renderExerciseList(weekIdx, dayIdx);
+
+  document.getElementById('addExerciseBtn').addEventListener('click', ()=>{
+    const day = STATE.weeks[weekIdx].days[dayIdx];
+    if(!day.exercise) day.exercise = [];
+    day.exercise.push({ description:'', minutes:15 });
+    saveState();
+    renderExerciseList(weekIdx, dayIdx);
+    updateExerciseTotal(weekIdx, dayIdx);
+  });
+}
+
+function renderExerciseList(weekIdx, dayIdx){
+  const list = document.getElementById('exerciseList');
+  const entries = exerciseEntriesFor(weekIdx, dayIdx);
+
+  if(!entries.length){
+    list.innerHTML = `<p class="empty-note">No exercise logged for today yet.</p>`;
+    return;
+  }
+
+  list.innerHTML = entries.map((entry,i)=>`
+    <div class="exercise-row" data-idx="${i}">
+      <input type="text" class="exercise-desc" data-idx="${i}" placeholder="e.g. Walking" value="${(entry.description||'').replace(/"/g,'&quot;')}">
+      <select class="exercise-mins" data-idx="${i}">
+        ${EXERCISE_MINUTE_OPTIONS.map(m=>`<option value="${m}" ${entry.minutes===m?'selected':''}>${formatMinutes(m)}</option>`).join('')}
+      </select>
+      <button class="exercise-remove" data-idx="${i}" aria-label="Remove">&times;</button>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.exercise-desc').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const i = +inp.dataset.idx;
+      STATE.weeks[weekIdx].days[dayIdx].exercise[i].description = inp.value;
+      saveState();
+    });
+  });
+  list.querySelectorAll('.exercise-mins').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const i = +sel.dataset.idx;
+      STATE.weeks[weekIdx].days[dayIdx].exercise[i].minutes = parseInt(sel.value,10);
+      saveState();
+      updateExerciseTotal(weekIdx, dayIdx);
+    });
+  });
+  list.querySelectorAll('.exercise-remove').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const i = +btn.dataset.idx;
+      STATE.weeks[weekIdx].days[dayIdx].exercise.splice(i,1);
+      saveState();
+      renderExerciseList(weekIdx, dayIdx);
+      updateExerciseTotal(weekIdx, dayIdx);
+    });
+  });
+}
+
+function updateExerciseTotal(weekIdx, dayIdx){
+  const el = document.querySelector('.exercise-total');
+  if(el) el.innerHTML = `Total: <strong>${formatMinutes(exerciseTotalMinutes(weekIdx, dayIdx))}</strong>`;
+}
+
+/* =========================================================================
    VIEW: WEEK LOG
    ========================================================================= */
 let currentWeekIdx = null;
@@ -1221,7 +1414,7 @@ function updateAllRemaining(){
    ========================================================================= */
 function renderHistory(){
   const el = document.getElementById('view-history');
-  const rows = STATE.weeks.map((w,i)=>({i, m:weekMetrics(i), delta:weekDelta(i)})).filter(r=> typeof r.m.weight === 'number');
+  const rows = STATE.weeks.map((w,i)=>({i, m:weekMetrics(i), delta:weekDelta(i), waistDelta:waistDelta(i), exerciseMins:weekExerciseTotalMinutes(i)})).filter(r=> typeof r.m.weight === 'number');
 
   if(!rows.length){
     el.innerHTML = `<section class="block"><p class="empty-note">Nothing logged yet — your history will appear here week by week.</p></section>`;
@@ -1236,7 +1429,7 @@ function renderHistory(){
         <table class="data">
           <thead><tr>
             <th>Week</th><th>Date</th><th>Weight</th><th>Waist</th><th>Waist %</th>
-            <th>BMI</th><th>Energy output (kJ)</th><th>vs Goal</th><th>Weekly Δ</th><th>Activity</th>
+            <th>BMI</th><th>Energy output (kJ)</th><th>vs Goal</th><th>Weight Δ</th><th>Waist Δ</th><th>Exercise</th><th>Activity</th>
           </tr></thead>
           <tbody>
             ${rows.map(r=>`
@@ -1250,6 +1443,8 @@ function renderHistory(){
                 <td>${r.m.energy!==null? r.m.energy.toLocaleString():'—'}</td>
                 <td>${r.m.difference!==null? (r.m.difference>=0?'+':'')+r.m.difference.toFixed(1)+' kg':'—'}</td>
                 <td>${r.delta!==null? (r.delta>=0?'−':'+')+Math.abs(r.delta).toFixed(1)+' kg':'—'}</td>
+                <td>${r.waistDelta!==null? (r.waistDelta>=0?'−':'+')+Math.abs(r.waistDelta).toFixed(0)+' cm':'—'}</td>
+                <td>${r.exerciseMins>0? formatMinutes(r.exerciseMins):'—'}</td>
                 <td>${r.m.activity||'—'}</td>
               </tr>`).join('')}
           </tbody>
@@ -1316,6 +1511,7 @@ function renderSettings(){
         <div><label class="field">Height (cm)</label><input type="number" step="0.5" id="setHeight" value="${s.height}"></div>
         <div><label class="field">Age (years)</label><input type="number" step="1" id="setAge" value="${s.age}"></div>
         <div><label class="field">Aspirational weekly loss (kg)</label><input type="number" step="0.05" id="setAspiration" value="${s.aspirationRate}"></div>
+        <div><label class="field">Aspirational weekly waist loss (cm)</label><input type="number" step="0.05" id="setAspirationWaist" value="${s.aspirationRateWaist}"></div>
       </div>
     </section>
 
@@ -1381,13 +1577,14 @@ function renderSettings(){
     );
   });
 
-  el.querySelectorAll('#setGoalWeight,#setGoalWaist,#setHeight,#setAge,#setAspiration').forEach(inp=>{
+  el.querySelectorAll('#setGoalWeight,#setGoalWaist,#setHeight,#setAge,#setAspiration,#setAspirationWaist').forEach(inp=>{
     inp.addEventListener('change', ()=>{
       s.goalWeight = parseFloat(document.getElementById('setGoalWeight').value)||s.goalWeight;
       s.goalWaist  = parseFloat(document.getElementById('setGoalWaist').value)||s.goalWaist;
       s.height     = parseFloat(document.getElementById('setHeight').value)||s.height;
       s.age        = parseFloat(document.getElementById('setAge').value)||s.age;
       s.aspirationRate = parseFloat(document.getElementById('setAspiration').value)||s.aspirationRate;
+      s.aspirationRateWaist = parseFloat(document.getElementById('setAspirationWaist').value)||s.aspirationRateWaist;
       saveState(); showToast('Settings saved');
       renderSettings(); /* height/age feed the energy calc, which the quota-level prompt above depends on */
     });
@@ -1431,7 +1628,7 @@ function renderSettings(){
       try{
         const parsed = JSON.parse(reader.result);
         if(parsed && parsed.weeks && parsed.settings){
-          if(!parsed.settings.theme) parsed.settings.theme='meadow';
+          backfillSettings(parsed.settings);
           STATE = parsed;
           applyTheme(STATE.settings.theme);
           saveState();
@@ -1501,6 +1698,7 @@ function showConfirm(message, onConfirm){
 function renderAll(){
   renderDash();
   renderToday();
+  renderExercise();
   renderWeek();
   renderHistory();
   renderSettings();
@@ -1516,6 +1714,7 @@ function setupNav(){
       document.getElementById('view-'+btn.dataset.view).classList.add('active');
       if(btn.dataset.view==='dash') renderDash();
       if(btn.dataset.view==='today') renderToday();
+      if(btn.dataset.view==='exercise') renderExercise();
       if(btn.dataset.view==='week') renderWeek();
       if(btn.dataset.view==='history') renderHistory();
       if(btn.dataset.view==='settings') renderSettings();
