@@ -1205,26 +1205,44 @@ function formatMinutes(mins){
   return m>0 ? `${h}h ${m}min` : `${h}h`;
 }
 
+const EXERCISE_MAX_OFFSET = TOTAL_WEEKS*7 - 1;
+let currentExerciseOffset = null; /* absolute day index (week*7 + day) across the whole 69-week tracker */
+
+function todayExerciseOffset(){
+  const loc = todayLocation();
+  return loc.weekIdx*7 + loc.dayIdx;
+}
+function exerciseWeekDayFromOffset(offset){
+  const clamped = Math.max(0, Math.min(EXERCISE_MAX_OFFSET, offset));
+  return { weekIdx: Math.floor(clamped/7), dayIdx: clamped%7 };
+}
+
 function renderExercise(){
+  if(currentExerciseOffset === null) currentExerciseOffset = todayExerciseOffset();
   const el = document.getElementById('view-exercise');
-  const { weekIdx, dayIdx, todayISO, inRange } = todayLocation();
-  const entries = exerciseEntriesFor(weekIdx, dayIdx);
+  const { weekIdx, dayIdx } = exerciseWeekDayFromOffset(currentExerciseOffset);
+  const dateISO = addDaysISO(STATE.weeks[weekIdx].startDate, dayIdx);
+  const isToday = currentExerciseOffset === todayExerciseOffset();
   const total = exerciseTotalMinutes(weekIdx, dayIdx);
 
   el.innerHTML = `
-    <div class="today-header">
-      <h2>${DAY_NAMES[dayIdx]}</h2>
-      <span class="sub-date">${fmtDate(todayISO)} · Week ${weekIdx+1} of ${TOTAL_WEEKS}</span>
+    <div class="week-nav">
+      <button class="btn ghost" id="prevExerciseDayBtn" ${currentExerciseOffset<=0?'disabled':''}>&larr; Previous day</button>
+      <div class="center">${DAY_NAMES[dayIdx]}${isToday?' (today)':''}<span class="date">${fmtDate(dateISO)} · Week ${weekIdx+1} of ${TOTAL_WEEKS}</span></div>
+      <button class="btn ghost" id="nextExerciseDayBtn" ${currentExerciseOffset>=EXERCISE_MAX_OFFSET?'disabled':''}>Next day &rarr;</button>
     </div>
-    ${!inRange ? `<div class="today-banner">Today's date falls outside the 69-week tracker, so this is showing the nearest day (Week ${weekIdx+1}, ${DAY_NAMES[dayIdx]}).</div>` : ''}
 
     <section class="block">
-      <h2>Today's exercise</h2>
+      <h2>Exercise</h2>
       <div class="sub">Log as many entries as you like — walking, weights, swimming, whatever you did</div>
       <div id="exerciseList"></div>
       <button class="btn secondary" id="addExerciseBtn" style="margin-top:10px;">+ Add exercise</button>
       <div class="exercise-total">Total: <strong>${formatMinutes(total)}</strong></div>
     </section>
+
+    <div style="display:flex;justify-content:flex-end;">
+      <button class="btn ghost" id="jumpExerciseTodayBtn" ${isToday?'disabled':''}>Jump to today</button>
+    </div>
   `;
 
   renderExerciseList(weekIdx, dayIdx);
@@ -1236,6 +1254,19 @@ function renderExercise(){
     saveState();
     renderExerciseList(weekIdx, dayIdx);
     updateExerciseTotal(weekIdx, dayIdx);
+  });
+
+  document.getElementById('prevExerciseDayBtn').addEventListener('click', ()=>{
+    currentExerciseOffset = Math.max(0, currentExerciseOffset-1);
+    renderExercise();
+  });
+  document.getElementById('nextExerciseDayBtn').addEventListener('click', ()=>{
+    currentExerciseOffset = Math.min(EXERCISE_MAX_OFFSET, currentExerciseOffset+1);
+    renderExercise();
+  });
+  document.getElementById('jumpExerciseTodayBtn').addEventListener('click', ()=>{
+    currentExerciseOffset = todayExerciseOffset();
+    renderExercise();
   });
 }
 
@@ -1570,6 +1601,7 @@ function renderSettings(){
       ()=>{
         STATE.weeks.forEach(w=>{ w.startDate = addDaysISO(w.startDate, shiftDays); });
         currentWeekIdx = null; /* re-derive from the new calendar rather than an old index */
+        currentExerciseOffset = null; /* same — land back on today's exercise day */
         saveState();
         showToast('Week 1 date updated');
         renderAll();
@@ -1646,6 +1678,7 @@ function renderSettings(){
       STATE.settings.theme = keepTheme;
       saveState();
       currentWeekIdx = null;
+      currentExerciseOffset = null;
       renderAll();
       showToast('Data reset');
     });
