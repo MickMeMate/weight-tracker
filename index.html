@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>Weight &amp; Waist Tracker</title>
- 
+
 <!-- PWA: installable "Add to Home Screen" / Android package support -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2E5C42">
@@ -36,10 +36,10 @@
   html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:var(--sans);}
   body{-webkit-tap-highlight-color:transparent; transition:background 0.25s ease, color 0.25s ease;}
   button, input, select{font-family:var(--sans);-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
- 
+
   #app{max-width:1000px;margin:0 auto;padding:0 20px 80px;}
   @media (max-width:480px){ #app{padding:0 12px 70px;} }
- 
+
   header.top{
     display:flex;align-items:flex-start;justify-content:space-between;
     padding:24px 0 16px; border-bottom:1px solid var(--line);
@@ -51,7 +51,7 @@
   }
   header.top .tagline{color:var(--ink-soft); font-size:12.5px; margin-top:4px;}
   header.top .today{font-size:12.5px; color:var(--ink-faint); text-align:right;}
- 
+
   nav.tabs{
     display:flex; gap:2px; margin:16px 0 24px; border-bottom:1px solid var(--line);
     overflow-x:auto; -ms-overflow-style:none; scrollbar-width:none;
@@ -63,10 +63,10 @@
   }
   nav.tabs button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
   nav.tabs button:hover{color:var(--accent);}
- 
+
   .view{display:none;}
   .view.active{display:block;}
- 
+
   /* ---------- generic building blocks ---------- */
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
   .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
@@ -74,7 +74,7 @@
   @media (max-width:760px){ .grid2,.grid3{grid-template-columns:1fr;} }
   @media (max-width:900px){ .grid4{grid-template-columns:repeat(2,1fr);} }
   @media (max-width:480px){ .grid4{grid-template-columns:1fr;} }
- 
+
   section.block{
     border:1px solid var(--line); background:var(--paper); border-radius:8px;
     padding:20px 22px; margin-bottom:18px;
@@ -84,26 +84,26 @@
     font-family:var(--serif); font-weight:400; font-size:18px; margin:0 0 4px; color:var(--ink);
   }
   section.block .sub{font-size:12.5px;color:var(--ink-faint);margin-bottom:16px;}
- 
+
   .stat-row{display:flex; align-items:flex-end; gap:22px; flex-wrap:wrap;}
   .stat{min-width:100px;}
   .stat .num{font-family:var(--serif); font-size:32px; line-height:1; color:var(--ink);}
   .stat .num.accent{color:var(--accent);}
   .stat .lbl{font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.06em; margin-top:6px;}
- 
+
   .ruler{margin-top:16px;}
   .ruler .labels{display:flex; justify-content:space-between; font-size:12px; color:var(--ink-soft); margin-bottom:6px;}
   .ruler .track{position:relative; height:10px; border-radius:5px; background:var(--accent-pale); overflow:visible;}
   .ruler .fill{position:absolute; top:0; left:0; height:100%; border-radius:5px; background:var(--accent); transition:width 0.3s ease;}
   .ruler .pct{font-size:12.5px; color:var(--ink-soft); margin-top:8px;}
   .ruler .secondary{font-size:11.5px; color:var(--ink-faint); margin-top:6px;}
- 
+
   table.data{width:100%; border-collapse:collapse; font-size:13px;}
   table.data th{text-align:left; font-weight:600; color:var(--ink-soft); font-size:11px; text-transform:uppercase; letter-spacing:0.04em; padding:6px 8px; border-bottom:1px solid var(--line);}
   table.data td{padding:7px 8px; border-bottom:1px solid var(--line); white-space:nowrap; color:var(--ink);}
   table.data tr:last-child td{border-bottom:none;}
   table.data tbody tr:hover{background:var(--accent-pale);}
- 
+
   .btn{
     background:var(--accent); color:#fff; border:none; padding:9px 16px; border-radius:6px;
     font-size:13.5px; cursor:pointer;
@@ -114,23 +114,23 @@
   .btn.ghost{background:none;color:var(--ink-soft);border:1px solid var(--line);}
   .btn.ghost:hover{border-color:var(--ink-faint);}
   .btn:disabled{opacity:0.4;cursor:not-allowed;}
- 
+
   input[type=number], input[type=text], input[type=date], select{
     padding:8px 9px; border:1px solid var(--line); border-radius:5px; font-size:14px;
     background:var(--paper); color:var(--ink); width:100%;
   }
   input:focus, select:focus{outline:2px solid var(--accent-soft); border-color:var(--accent);}
   label.field{display:block; font-size:11px; color:var(--ink-soft); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.04em;}
- 
+
   @media (max-width:480px){
     input[type=number], input[type=text], select{font-size:16px;} /* prevents iOS auto-zoom */
   }
- 
+
   /* ---------- week view ---------- */
   .week-nav{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap;}
   .week-nav .center{font-family:var(--serif); font-size:19px; text-align:center;}
   .week-nav .center .date{display:block; font-size:12px; color:var(--ink-faint); font-family:var(--sans);}
- 
+
   .day-cols{display:grid; grid-template-columns:140px repeat(7,minmax(72px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:12.5px; min-width:640px;}
   .day-cols > div{background:var(--paper); padding:8px 6px;}
   .day-cols .rowhead{background:var(--accent-pale); font-weight:600; display:flex; align-items:center; color:var(--ink);}
@@ -143,21 +143,21 @@
   .remaining.ok{color:var(--accent);}
   .day-cols .cat-indulgence{background:var(--highlight-soft);}
   .day-cols .rowhead.cat-indulgence, .day-cols .colhead{color:var(--ink);}
- 
+
   .week-meta{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px;}
   @media (max-width:640px){ .week-meta{grid-template-columns:1fr 1fr;} }
   @media (max-width:420px){ .week-meta{grid-template-columns:1fr;} }
   .activity-legend{margin-top:4px;}
   .activity-legend summary{font-size:12.5px; color:var(--accent); cursor:pointer; -webkit-tap-highlight-color:transparent;}
   .activity-legend summary:hover{text-decoration:underline;}
- 
+
   .toast{
     position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
     background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:6px; font-size:13px;
     opacity:0; pointer-events:none; transition:opacity 0.2s; max-width:90vw; text-align:center;
   }
   .toast.show{opacity:1;}
- 
+
   .settings-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:14px 20px;}
   @media (max-width:640px){ .settings-grid{grid-template-columns:1fr;} }
   .quota-row{display:grid; grid-template-columns:1.4fr 0.8fr; gap:10px; align-items:center; padding:6px 0;}
@@ -165,15 +165,15 @@
     background:var(--warn-soft); border:1px solid var(--warn); border-radius:8px;
     padding:12px 16px; margin-bottom:14px; font-size:13px; color:var(--ink); line-height:1.5;
   }
- 
+
   .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft); margin-top:10px;}
   .legend span{display:inline-flex;align-items:center;gap:5px;}
   .swatch{width:10px;height:10px;border-radius:2px;display:inline-block;}
- 
+
   .empty-note{color:var(--ink-faint); font-size:13px; font-style:italic;}
- 
+
   footer.note{font-size:11.5px; color:var(--ink-faint); text-align:center; margin-top:30px; line-height:1.6;}
- 
+
   /* ---------- theme picker (Settings) ---------- */
   .theme-groups{display:flex; flex-direction:column; gap:18px;}
   .theme-group-label{font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-faint); margin-bottom:8px;}
@@ -188,9 +188,16 @@
   .theme-card .dots span{width:14px;height:14px;border-radius:50%;display:inline-block;}
   .theme-card .name{font-size:13px; color:var(--ink);}
   .theme-card .check{position:absolute; top:6px; right:8px; font-size:12px; color:var(--accent);}
- 
+
   /* ---------- Today view ---------- */
   .today-header{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;}
+
+  .unit-toggle{display:inline-flex; border:1px solid var(--line); border-radius:20px; overflow:hidden; flex-shrink:0;}
+  .unit-btn{
+    background:var(--paper); border:none; padding:5px 14px; font-size:12px; font-weight:600;
+    color:var(--ink-soft); cursor:pointer; -webkit-tap-highlight-color:transparent;
+  }
+  .unit-btn.active{background:var(--accent); color:var(--paper);}
   .today-header h2{font-family:var(--serif); font-weight:400; font-size:22px; margin:0; color:var(--ink);}
   .today-header .sub-date{font-size:12.5px; color:var(--ink-faint);}
   .today-banner{
@@ -200,7 +207,7 @@
   }
   .today-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
   @media (max-width:700px){ .today-grid{grid-template-columns:1fr;} }
- 
+
   .today-card{
     border:1.5px solid var(--line); background:var(--paper); border-radius:10px; padding:16px 16px 12px;
     transition:border-color 0.15s ease, background 0.15s ease;
@@ -210,7 +217,7 @@
   .today-card.status-near{ border-color:var(--highlight); background:var(--highlight-soft); }
   .today-card.status-target{ border-color:var(--accent); background:var(--accent-soft); }
   .today-card.status-over{ border-color:var(--warn); background:var(--warn-soft); }
- 
+
   .today-card-head{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:10px;}
   .today-cat-name{font-size:14.5px; font-weight:600; color:var(--ink);}
   .today-cat-name .quota-note{display:block; font-size:11px; font-weight:400; color:var(--ink-faint); margin-top:2px;}
@@ -239,7 +246,7 @@
   .today-status-pill.status-near{background:var(--highlight-soft); color:var(--highlight);}
   .today-status-pill.status-target{background:var(--accent); color:var(--paper);}
   .today-status-pill.status-over{background:var(--warn-soft); color:var(--warn);}
- 
+
   .today-value-row{display:flex; align-items:center; justify-content:center; gap:18px; margin-bottom:14px;}
   .today-value{font-family:var(--serif); font-size:34px; min-width:64px; text-align:center; color:var(--ink);}
   .weight-input{
@@ -258,7 +265,7 @@
   .today-card.status-near .stepper{ border-color:var(--highlight); color:var(--highlight); background:var(--paper); }
   .today-card.status-target .stepper{ border-color:var(--accent); color:var(--paper); background:var(--accent); }
   .today-card.status-over .stepper{ border-color:var(--warn); color:var(--warn); background:var(--paper); }
- 
+
   .slider-wrap{height:14px; border-radius:7px; position:relative; margin-bottom:4px;}
   input[type=range].today-slider{
     -webkit-appearance:none; appearance:none; width:100%; height:14px; margin:0; background:transparent;
@@ -277,7 +284,7 @@
     cursor:default; box-shadow:0 1px 3px rgba(0,0,0,0.3);
   }
   .today-sub{font-size:12px; color:var(--ink-soft); text-align:center; margin-top:4px;}
- 
+
   /* ---------- Exercise view ---------- */
   .exercise-row{display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line);}
   .exercise-row:last-child{border-bottom:none;}
@@ -293,7 +300,7 @@
     font-size:15px; color:var(--ink); text-align:right;
   }
   .exercise-total strong{font-family:var(--serif); font-size:20px; color:var(--accent);}
- 
+
   .confirm-overlay{
     position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000;
     display:flex; align-items:center; justify-content:center; padding:20px;
@@ -309,7 +316,7 @@
 </head>
 <body>
 <div id="app">
- 
+
   <header class="top">
     <div>
       <h1>Weight &amp; Waist Tracker</h1>
@@ -317,7 +324,7 @@
     </div>
     <div class="today" id="todayLabel"></div>
   </header>
- 
+
   <nav class="tabs">
     <button data-view="dash" class="active">Dashboard</button>
     <button data-view="today">Today</button>
@@ -326,32 +333,32 @@
     <button data-view="history">Log Book</button>
     <button data-view="settings">Settings</button>
   </nav>
- 
+
   <!-- ================= DASHBOARD ================= -->
   <div class="view active" id="view-dash"></div>
- 
+
   <!-- ================= TODAY ================= -->
   <div class="view" id="view-today"></div>
- 
+
   <!-- ================= EXERCISE ================= -->
   <div class="view" id="view-exercise"></div>
- 
+
   <!-- ================= WEEK ================= -->
   <div class="view" id="view-week"></div>
- 
+
   <!-- ================= HISTORY ================= -->
   <div class="view" id="view-history"></div>
- 
+
   <!-- ================= SETTINGS ================= -->
   <div class="view" id="view-settings"></div>
- 
+
   <footer class="note">
     Data is stored only in this browser (localStorage). Use Settings to export a backup.
   </footer>
 </div>
- 
+
 <div class="toast" id="toast"></div>
- 
+
 <script>
 /* =========================================================================
    CONSTANTS — mirrors the Reference tab of the spreadsheet
@@ -382,7 +389,7 @@ const ACTIVITY_DESCRIPTIONS = {
   'Very Active':        'Hard exercise or sport 6–7 days a week',
   'Extremely Active':   'Very hard daily exercise or sport, plus a physical job'
 };
- 
+
 /* Preset daily quota levels, each tuned to roughly the stated energy intake.
    Selecting one fills in the category quotas below; you can still fine-tune
    individual categories afterward. */
@@ -399,7 +406,7 @@ const WEIGHT_RANGE_SPAN_KG = 35;   /* valid entries must stay within this many k
 const WEIGHT_FALLBACK_MIN = 20;    /* kg — only used for the first-ever entry, before there's an initial weight to measure against */
 const WEIGHT_FALLBACK_MAX = 300;   /* kg — same */
 const WEIGHT_CHANGE_FLAG_KG = 7;   /* a single-day change bigger than this gets a confirm step rather than a silent save */
- 
+
 /* The very first weight ever recorded — checks daily entries first, falling
    back to a week's startWeight on its Monday (covers weeks recorded before
    daily tracking existed). This is the anchor for the ±35kg sanity range,
@@ -418,14 +425,14 @@ function initialWeight(){
 const TOTAL_WEEKS = 69;
 const STORAGE_KEY = 'weightTrackerData_v1';
 const WAIST_HEIGHT_GOAL_PCT = 50; /* the "keep your waist under half your height" target */
- 
+
 /* BMI band thresholds (clinical standard, as used in the source workbook) */
 const BMI_UNDER = 18.5, BMI_NORMAL = 24.9, BMI_OVER = 29.9, BMI_OBESE = 35;
- 
+
 /* Waist-to-height ratio (WHtR) guideline bands */
 const WHTR_LOW = 0.4, WHTR_HEALTHY_MAX = 0.5, WHTR_ELEVATED_MAX = 0.6;
 const WHTR_ZONE_LABELS = ['Too slender','Healthy range','Elevated risk','Higher risk'];
- 
+
 /* =========================================================================
    COLOUR THEMES
    ========================================================================= */
@@ -442,7 +449,7 @@ const THEMES = {
   amethyst: { label:'Amethyst', group:'Dark',  bg:'#17131C', paper:'#201A29', ink:'#F1EAF5', inkSoft:'#B6A3C2', inkFaint:'#7A6A85', line:'#352A40', accent:'#B27BFF', accentSoft:'#2E2140', accentPale:'#1F1729', warn:'#FF7A66', warnSoft:'#3A211D', highlight:'#F2C14E', highlightSoft:'#39301A' }
 };
 const THEME_ORDER = ['meadow','sunset','ocean','lavender','clay','midnight','berry','spruce','bumblebee','amethyst'];
- 
+
 function applyTheme(key){
   const t = THEMES[key] || THEMES.meadow;
   const root = document.documentElement.style;
@@ -462,19 +469,19 @@ function applyTheme(key){
   if(STATE){ STATE.settings.theme = key; saveState(); }
 }
 function themeVar(name){ return getComputedStyle(document.documentElement).getPropertyValue('--'+name).trim(); }
- 
+
 /* =========================================================================
    STATE
    ========================================================================= */
 let STATE = null;
- 
+
 function addDaysISO(iso, n){
   const d = new Date(iso+'T00:00:00');
   d.setDate(d.getDate()+n);
   return localISODate(d); /* local date parts, not toISOString() (which is UTC
     and silently shifts a day for any positive UTC-offset timezone, e.g. Perth) */
 }
- 
+
 /* Monday of the current week (or today, if today is itself a Monday) — the
    sensible starting point for a brand-new, empty tracker. Change it anytime
    from Settings \u2192 Calendar. */
@@ -486,7 +493,7 @@ function defaultWeek1Monday(){
   monday.setDate(monday.getDate() - daysSinceMonday);
   return localISODate(monday);
 }
- 
+
 function buildDefaultState(){
   const weeks = [];
   let cursor = defaultWeek1Monday();
@@ -498,13 +505,13 @@ function buildDefaultState(){
   return {
     settings:{
       height:176, age:50, sex:'male', goalWeight:80, goalWaist:90, aspirationRate:0.2, aspirationRateWaist:0.3, theme:'meadow',
-      quotaLevel:8000,
+      quotaLevel:8000, energyUnit:'kj', weightUnit:'kg',
       quotas:Object.fromEntries(CATEGORIES.map(c=>[c.key,c.quota]))
     },
     weeks
   };
 }
- 
+
 /* Fills in any settings fields missing from an older save/export so loading
    or importing one never crashes or silently produces NaN/undefined —
    used both for localStorage loads and for Settings > Import backup. */
@@ -513,9 +520,11 @@ function backfillSettings(settings){
   if(!settings.sex) settings.sex='male';
   if(!settings.quotaLevel) settings.quotaLevel=8000;
   if(typeof settings.aspirationRateWaist !== 'number') settings.aspirationRateWaist=0.3;
+  if(!settings.energyUnit) settings.energyUnit='kj';
+  if(!settings.weightUnit) settings.weightUnit='kg';
   return settings;
 }
- 
+
 function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -533,12 +542,12 @@ function saveState(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE)); }
   catch(e){ showToast('Could not save — storage may be full.'); }
 }
- 
+
 /* =========================================================================
    DERIVED CALCULATIONS — mirrors the Data tab formulas
    ========================================================================= */
 function quotaFor(key){ return STATE.settings.quotas[key]; }
- 
+
 function weekMetrics(i){
   const w = STATE.weeks[i];
   const s = STATE.settings;
@@ -562,7 +571,7 @@ function weekMetrics(i){
   const difference = hasWeight ? (w.startWeight - s.goalWeight) : null;
   return { date:w.startDate, weight:w.startWeight, waist:w.startWaist, activity:w.activity, bmi, waistPct, whtr, bmrEnergy, energy, difference };
 }
- 
+
 /* delta = weight this week minus weight NEXT week (matches the sheet's own
    row-shifted definition: J[n] = Difference[n] - Difference[n+1]) */
 function weekDelta(i){
@@ -570,14 +579,14 @@ function weekDelta(i){
   if(!b || typeof a.startWeight !== 'number' || typeof b.startWeight !== 'number') return null;
   return a.startWeight - b.startWeight;
 }
- 
+
 /* same shifted definition as weekDelta, but for waist */
 function waistDelta(i){
   const a = STATE.weeks[i], b = STATE.weeks[i+1];
   if(!b || typeof a.startWaist !== 'number' || typeof b.startWaist !== 'number') return null;
   return a.startWaist - b.startWaist;
 }
- 
+
 /* ---- daily weight entries (Today tab) and the Monday auto-average ----
    Weight is now logged per day via the Today tab. The first daily weigh-in
    of a new week automatically sets that week's official startWeight to the
@@ -604,7 +613,7 @@ function maybeAutoSetWeeklyWeight(weekIdx, priorCount){
   STATE.weeks[weekIdx].startWeight = rounded;
   return `Week ${weekIdx+1} weight auto-set to ${rounded}kg (last week's daily average)`;
 }
- 
+
 /* Most recent weight on record strictly before (weekIdx, dayIdx) — checks each
    day's own daily entry first, and falls back to that week's startWeight on
    Mondays with no daily entry (covers weeks recorded before this feature, or
@@ -623,19 +632,19 @@ function lastKnownWeight(weekIdx, dayIdx){
   }
   return null;
 }
- 
+
 /* aspirational weight: actual once known, otherwise a straight-line
    decline from the last known actual at the configured weekly rate */
 function aspirationalSeries(){
   return linearAspirationalSeries(w=>w.startWeight, STATE.settings.aspirationRate);
 }
- 
+
 /* same idea as aspirationalSeries, but for waist (cm) at the configured
    aspirational weekly reduction rate */
 function aspirationalWaistSeries(){
   return linearAspirationalSeries(w=>w.startWaist, STATE.settings.aspirationRateWaist);
 }
- 
+
 /* A genuinely linear reference line: anchored at whichever week first has a
    real reading, then declining by a fixed amount per week from there on —
    independent of what actually happened week to week. This is what makes it
@@ -653,7 +662,7 @@ function linearAspirationalSeries(getValue, ratePerWeek){
   }
   return out;
 }
- 
+
 function lastLoggedWeekIndex(){
   let idx = -1;
   STATE.weeks.forEach((w,i)=>{ if(typeof w.startWeight==='number') idx=i; });
@@ -663,7 +672,7 @@ function nextUnloggedWeekIndex(){
   const last = lastLoggedWeekIndex();
   return Math.min(last+1, TOTAL_WEEKS-1);
 }
- 
+
 /* Checks whether the calculated energy output has drifted close to the
    currently selected quota level — if the gap is under the threshold, the
    deficit that drives weight loss is shrinking and it's worth stepping down
@@ -679,7 +688,7 @@ function quotaPromptCheck(){
   const lower = QUOTA_PRESETS.filter(p=>p.kj < level).sort((a,b)=>b.kj-a.kj)[0] || null;
   return { energy, level, diff, lower };
 }
- 
+
 function quotaPromptBannerHtml(){
   const prompt = quotaPromptCheck();
   if(!prompt) return '';
@@ -691,7 +700,7 @@ function quotaPromptBannerHtml(){
     Your calculated energy output (${prompt.energy.toLocaleString()} kJ) is only ${gap.toLocaleString()} kJ from your current ${prompt.level.toLocaleString()} kJ quota level. ${suggestion}
   </div>`;
 }
- 
+
 function dayRemaining(weekIdx, catKey, dayIdx){
   const w = STATE.weeks[weekIdx];
   const quota = quotaFor(catKey);
@@ -708,7 +717,7 @@ function dayRemaining(weekIdx, catKey, dayIdx){
     return quota - (typeof used==='number' ? used : 0);
   }
 }
- 
+
 /* today's used-so-far / status, reusing dayRemaining so the numbers always
    agree with the This Week tab */
 function categoryProgress(weekIdx, dayIdx, catKey){
@@ -729,9 +738,44 @@ function categoryProgress(weekIdx, dayIdx, catKey){
 }
 const STATUS_LABEL = { empty:'Not logged', under:'Under quota', near:'Near quota', target:'On quota', over:'Over quota' };
 function trimNum(v){ return (Math.round(v*100)/100).toString(); }
+
+/* Converts a kJ value (every energy figure is stored/calculated in kJ) to
+   whichever unit the dashboard toggle is set to, using the same 4.2 factor
+   the app already uses internally to go from kcal to kJ — so toggling back
+   and forth always returns the exact original number, never a rounding-
+   drifted approximation from a different standard conversion constant. */
+function displayEnergy(kj){
+  if(kj === null) return null;
+  return STATE.settings.energyUnit==='cal' ? Math.round(kj/4.2) : kj;
+}
+function energyUnitLabel(){
+  return STATE.settings.energyUnit==='cal' ? 'Cal/day' : 'kJ/day';
+}
+
+/* Display-only kg -> stones/pounds conversion for the dashboard's Weight
+   card. All stored and entered measurements (Today, This Week, history)
+   stay in kg regardless of this toggle — it only changes how the dashboard
+   renders existing kg values, never what's saved. */
+function kgToStonesPounds(kg){
+  const totalLbs = kg * 2.20462;
+  let stones = Math.floor(totalLbs/14);
+  let lbs = Math.round(totalLbs - stones*14);
+  if(lbs===14){ lbs=0; stones+=1; }
+  return { stones, lbs };
+}
+function weightNumberDisplay(kg, unit){
+  if(unit==='stlb'){ const {stones,lbs}=kgToStonesPounds(kg); return `${stones}st ${lbs}lb`; }
+  return kg.toFixed(1);
+}
+function weightInlineDisplay(kg, unit){
+  return unit==='stlb' ? weightNumberDisplay(kg,unit) : kg.toFixed(1)+'kg';
+}
+function weightLabelSuffix(unit){
+  return unit==='stlb' ? '' : ' (kg)'; /* the st/lb number is self-describing; kg still needs the hint */
+}
 function roundQuarter(v){ return Math.round(v/0.25)*0.25; }
 function sliderMax(quota){ return Math.ceil((quota + Math.max(2, quota*0.6))/0.25)*0.25; }
- 
+
 /* Bands are always fixed to the category's quota (80% / 100% of it) and
    never move based on what's already been consumed — the slider is purely
    "how much am I logging right now", read against a constant scale. */
@@ -751,7 +795,7 @@ function todaySubText(p, cat){
     ? `${trimNum(p.remaining)} remaining today`
     : `${trimNum(Math.abs(p.remaining))} over today`;
 }
- 
+
 /* maps today's real calendar date onto the 69-week timeline, so the Today
    tab always reflects the actual day regardless of what's been logged */
 function localISODate(d){
@@ -768,7 +812,7 @@ function todayLocation(){
   if(weekIdx >= TOTAL_WEEKS) return { weekIdx:TOTAL_WEEKS-1, dayIdx:6, todayISO, inRange:false };
   return { weekIdx, dayIdx, todayISO, inRange:true };
 }
- 
+
 /* =========================================================================
    SVG CHART HELPERS (no external chart library — inline, self-contained)
    Colours are pulled live from the active theme so charts repaint instantly
@@ -785,25 +829,25 @@ function niceRange(min, max){
   const pad = (max-min)*0.12;
   return [min-pad, max+pad];
 }
- 
+
 function lineChart(container, {series, labels, height=220, refLine=null, yFormat=v=>v.toFixed(1)}){
   container.innerHTML='';
   const width = Math.max(320, container.clientWidth || 640);
   const marginL=42, marginR=14, marginT=14, marginB=26;
   const innerW = width-marginL-marginR, innerH = height-marginT-marginB;
   const svg = svgEl('svg',{viewBox:`0 0 ${width} ${height}`, width:'100%', height:height, style:'display:block;max-width:100%;'});
- 
+
   let allVals = [];
   series.forEach(s=> s.points.forEach(p=>{ if(typeof p==='number') allVals.push(p); }));
   if(refLine!==null) allVals.push(refLine);
   if(!allVals.length){ container.appendChild(svg); return; }
   let [ymin,ymax] = niceRange(Math.min(...allVals), Math.max(...allVals));
- 
+
   const gridColor = themeVar('line'), faintColor = themeVar('ink-faint'), warnColor = themeVar('warn');
   const n = labels.length;
   const xAt = i => marginL + (n<=1?0:(i/(n-1))*innerW);
   const yAt = v => marginT + innerH - ((v-ymin)/(ymax-ymin))*innerH;
- 
+
   const ticks = 4;
   for(let t=0;t<=ticks;t++){
     const v = ymin + (ymax-ymin)*(t/ticks);
@@ -823,7 +867,7 @@ function lineChart(container, {series, labels, height=220, refLine=null, yFormat
     txt.textContent = labels[i];
     svg.appendChild(txt);
   }
- 
+
   series.forEach(s=>{
     let d='', pen=false;
     s.points.forEach((v,i)=>{
@@ -842,21 +886,21 @@ function lineChart(container, {series, labels, height=220, refLine=null, yFormat
   });
   container.appendChild(svg);
 }
- 
+
 function bandChart(container, {series, labels, thresholds, minY, maxY, valueLabel=v=>v, height=220}){
   container.innerHTML='';
   const width = Math.max(320, container.clientWidth || 640);
   const marginL=42, marginR=14, marginT=14, marginB=26;
   const innerW = width-marginL-marginR, innerH = height-marginT-marginB;
   const svg = svgEl('svg',{viewBox:`0 0 ${width} ${height}`, width:'100%', height:height, style:'display:block;max-width:100%;'});
- 
+
   const vals = series.filter(v=>typeof v==='number');
   const dataMax = vals.length? Math.max(...vals): thresholds[thresholds.length-1];
   const ymin = minY, ymax = Math.max(maxY, dataMax+ (maxY-minY)*0.08);
   const n = labels.length;
   const xAt = i => marginL + (n<=1?0:(i/(n-1))*innerW);
   const yAt = v => marginT + innerH - ((v-ymin)/(ymax-ymin))*innerH;
- 
+
   const faintColor = themeVar('ink-faint'), accentColor = themeVar('accent');
   const bandColors = [themeVar('highlight-soft'), themeVar('accent-soft'), themeVar('highlight-soft'), themeVar('warn-soft')];
   const edges = [ymin, ...thresholds, ymax];
@@ -889,7 +933,7 @@ function bandChart(container, {series, labels, thresholds, minY, maxY, valueLabe
   series.forEach((v,i)=>{ if(typeof v==='number') svg.appendChild(svgEl('circle',{cx:xAt(i),cy:yAt(v),r:2.8,fill:accentColor})); });
   container.appendChild(svg);
 }
- 
+
 function barChartWithLine(container, {bars, labels, refValue=null, height=200}){
   container.innerHTML='';
   const width = Math.max(320, container.clientWidth || 640);
@@ -928,7 +972,7 @@ function barChartWithLine(container, {bars, labels, refValue=null, height=200}){
   }
   container.appendChild(svg);
 }
- 
+
 function donut(container, {achieved, size=120}){
   container.innerHTML='';
   const pct = Math.max(0, Math.min(1, isNaN(achieved)?0:achieved));
@@ -944,7 +988,7 @@ function donut(container, {achieved, size=120}){
   svg.appendChild(txt);
   container.appendChild(svg);
 }
- 
+
 function renderBmiGauge(container, bmi){
   container.innerHTML='';
   let zone = 'Normal', color=themeVar('accent');
@@ -965,7 +1009,7 @@ function renderBmiGauge(container, bmi){
   svg.appendChild(txt2);
   container.appendChild(svg);
 }
- 
+
 /* same visual language as the BMI gauge, but for waist-to-height ratio,
    shown as a percentage with its guideline zone label underneath */
 function renderWhtrGauge(container, whtr){
@@ -988,7 +1032,7 @@ function renderWhtrGauge(container, whtr){
   svg.appendChild(txt2);
   container.appendChild(svg);
 }
- 
+
 /* =========================================================================
    VIEW: DASHBOARD
    ========================================================================= */
@@ -996,37 +1040,43 @@ function renderDash(){
   const el = document.getElementById('view-dash');
   const idx = lastLoggedWeekIndex();
   const s = STATE.settings;
- 
+
   if(idx < 0){
     el.innerHTML = `<section class="block"><p class="empty-note">No weeks logged yet. Head to <strong>This Week</strong> to record your first weigh-in.</p></section>`;
     return;
   }
- 
+
   const cur = weekMetrics(idx);
   const start = weekMetrics(0);
   const weightAchievedPct = (start.weight - cur.weight) / (start.weight - s.goalWeight);
- 
+
   const startWaistPct = start.waistPct;
   const curWaistPct = cur.waistPct;
   const waistAchievedPct = (startWaistPct - curWaistPct) / (startWaistPct - WAIST_HEIGHT_GOAL_PCT);
- 
+
   el.innerHTML = `
     <div class="grid2">
       <section class="block">
-        <h2>Weight</h2>
+        <div class="today-header" style="margin-bottom:4px;">
+          <h2>Weight</h2>
+          <div class="unit-toggle" id="weightUnitToggle">
+            <button class="unit-btn ${s.weightUnit!=='stlb'?'active':''}" data-unit="kg" type="button">kg</button>
+            <button class="unit-btn ${s.weightUnit==='stlb'?'active':''}" data-unit="stlb" type="button">st lb</button>
+          </div>
+        </div>
         <div class="sub">Since ${fmtDate(start.date)}</div>
         <div class="stat-row">
-          <div class="stat"><div class="num accent">${cur.weight.toFixed(1)}</div><div class="lbl">Current (kg)</div></div>
-          <div class="stat"><div class="num">${start.weight.toFixed(1)}</div><div class="lbl">Start (kg)</div></div>
-          <div class="stat"><div class="num">${s.goalWeight.toFixed(1)}</div><div class="lbl">Goal (kg)</div></div>
+          <div class="stat"><div class="num accent">${weightNumberDisplay(cur.weight,s.weightUnit)}</div><div class="lbl">Current${weightLabelSuffix(s.weightUnit)}</div></div>
+          <div class="stat"><div class="num">${weightNumberDisplay(start.weight,s.weightUnit)}</div><div class="lbl">Start${weightLabelSuffix(s.weightUnit)}</div></div>
+          <div class="stat"><div class="num">${weightNumberDisplay(s.goalWeight,s.weightUnit)}</div><div class="lbl">Goal${weightLabelSuffix(s.weightUnit)}</div></div>
         </div>
         <div class="ruler">
-          <div class="labels"><span>Start ${start.weight.toFixed(1)}kg</span><span>Goal ${s.goalWeight.toFixed(1)}kg</span></div>
+          <div class="labels"><span>Start ${weightInlineDisplay(start.weight,s.weightUnit)}</span><span>Goal ${weightInlineDisplay(s.goalWeight,s.weightUnit)}</span></div>
           <div class="track"><div class="fill" style="width:${Math.max(0,Math.min(100,weightAchievedPct*100))}%"></div></div>
-          <div class="pct">${Math.round(weightAchievedPct*100)}% of the way to goal · ${(start.weight-cur.weight).toFixed(1)}kg lost so far</div>
+          <div class="pct">${Math.round(weightAchievedPct*100)}% of the way to goal · ${weightInlineDisplay(start.weight-cur.weight,s.weightUnit)} lost so far</div>
         </div>
       </section>
- 
+
       <section class="block">
         <h2>Waistline — % of height</h2>
         <div class="sub">Health guideline: keep your waist under 50% of your height</div>
@@ -1043,45 +1093,51 @@ function renderDash(){
         </div>
       </section>
     </div>
- 
+
     <section class="block">
-      <h2>Energy</h2>
+      <div class="today-header" style="margin-bottom:4px;">
+        <h2>Energy</h2>
+        <div class="unit-toggle" id="energyUnitToggle">
+          <button class="unit-btn ${s.energyUnit!=='cal'?'active':''}" data-unit="kj" type="button">kJ</button>
+          <button class="unit-btn ${s.energyUnit==='cal'?'active':''}" data-unit="cal" type="button">Cal</button>
+        </div>
+      </div>
       <div class="sub">Basal metabolic rate, estimated daily output, and the deficit (or surplus) against your selected quota level</div>
       <div class="stat-row">
-        <div class="stat"><div class="num">${cur.bmrEnergy!==null? cur.bmrEnergy.toLocaleString():'—'}</div><div class="lbl">BMR (kJ/day)</div></div>
-        <div class="stat"><div class="num">${cur.energy!==null? cur.energy.toLocaleString():'—'}</div><div class="lbl">Energy output (kJ/day)</div></div>
-        <div class="stat"><div class="num">${s.quotaLevel.toLocaleString()}</div><div class="lbl">Quota level (kJ/day)</div></div>
+        <div class="stat"><div class="num">${cur.bmrEnergy!==null? displayEnergy(cur.bmrEnergy).toLocaleString():'—'}</div><div class="lbl">BMR (${energyUnitLabel()})</div></div>
+        <div class="stat"><div class="num">${cur.energy!==null? displayEnergy(cur.energy).toLocaleString():'—'}</div><div class="lbl">Energy output (${energyUnitLabel()})</div></div>
+        <div class="stat"><div class="num">${displayEnergy(s.quotaLevel).toLocaleString()}</div><div class="lbl">Quota level (${energyUnitLabel()})</div></div>
         <div class="stat">
           <div class="num ${cur.energy===null?'':(cur.energy-s.quotaLevel>=0?'accent':'')}" style="${cur.energy!==null && cur.energy-s.quotaLevel<0?'color:var(--warn)':''}">
-            ${cur.energy!==null? ((cur.energy-s.quotaLevel>=0?'+':'')+(cur.energy-s.quotaLevel).toLocaleString()) : '—'}
+            ${cur.energy!==null? ((cur.energy-s.quotaLevel>=0?'+':'')+displayEnergy(cur.energy-s.quotaLevel).toLocaleString()) : '—'}
           </div>
-          <div class="lbl">${cur.energy!==null && cur.energy-s.quotaLevel<0 ? 'Surplus (kJ/day)' : 'Deficit (kJ/day)'}</div>
+          <div class="lbl">${cur.energy!==null && cur.energy-s.quotaLevel<0 ? 'Surplus' : 'Deficit'} (${energyUnitLabel()})</div>
         </div>
       </div>
       ${cur.energy===null? `<div class="sub" style="margin:8px 0 0;">Set an activity level for this week (in This Week) to calculate energy output and deficit.</div>` : ''}
     </section>
- 
+
     <div class="grid4">
       <section class="block"><h2>BMI</h2><div class="sub">Current: ${cur.bmi.toFixed(1)}</div><div id="donutBmiWrap" style="display:flex;justify-content:center;"></div></section>
       <section class="block"><h2>Waist-to-height</h2><div class="sub">Current ratio</div><div id="gaugeWhtrWrap" style="display:flex;justify-content:center;"></div></section>
       <section class="block"><h2>Weight goal progress</h2><div class="sub">Achieved vs remaining</div><div id="donutWeightWrap" style="display:flex;justify-content:center;"></div></section>
       <section class="block"><h2>Waist goal progress</h2><div class="sub">Achieved vs remaining (vs the 50% target)</div><div id="donutWaistWrap" style="display:flex;justify-content:center;"></div></section>
     </div>
- 
+
     <section class="block">
       <h2>Weight loss progress</h2>
       <div class="sub">Actual weight vs an aspirational trend line and your goal</div>
       <div id="chartWeight"></div>
       <div class="legend" id="legendWeight"></div>
     </section>
- 
+
     <section class="block">
       <h2>Shorts fit again — waistline progress</h2>
       <div class="sub">Waist measurement (cm) against your goal</div>
       <div id="chartWaist"></div>
       <div class="legend" id="legendWaist"></div>
     </section>
- 
+
     <section class="block">
       <h2>Waist-to-height ratio</h2>
       <div class="sub">Waist as a proportion of height — a more size-independent risk measure than cm alone</div>
@@ -1093,19 +1149,19 @@ function renderDash(){
         <span><span class="swatch" style="background:${themeVar('warn-soft')}"></span>0.60+ — higher risk</span>
       </div>
     </section>
- 
+
     <section class="block">
       <h2>BMI over time</h2>
       <div class="sub">Shaded bands show underweight / normal / overweight / obese ranges</div>
       <div id="chartBmi"></div>
     </section>
- 
+
     <section class="block">
       <h2>Weekly change</h2>
       <div class="sub">Kilograms lost (or gained) week to week</div>
       <div id="chartDelta"></div>
     </section>
- 
+
     <section class="block">
       <h2>Daily quota tracking</h2>
       <div class="sub">
@@ -1115,12 +1171,12 @@ function renderDash(){
       <div id="chartQuota"></div>
     </section>
   `;
- 
+
   renderBmiGauge(document.getElementById('donutBmiWrap'), cur.bmi);
   renderWhtrGauge(document.getElementById('gaugeWhtrWrap'), cur.whtr);
   donut(document.getElementById('donutWeightWrap'), {achieved:weightAchievedPct});
   donut(document.getElementById('donutWaistWrap'), {achieved:waistAchievedPct});
- 
+
   const accent = themeVar('accent'), highlight = themeVar('highlight'), warn = themeVar('warn');
   document.getElementById('legendWeight').innerHTML = `
     <span><span class="swatch" style="background:${accent}"></span>Actual weight</span>
@@ -1130,7 +1186,7 @@ function renderDash(){
     <span><span class="swatch" style="background:${accent}"></span>Actual waist</span>
     <span><span class="swatch" style="background:${highlight}"></span>Aspirational trend</span>
     <span><span class="swatch" style="background:${warn}"></span>Goal (${s.goalWaist}cm)</span>`;
- 
+
   const labels = STATE.weeks.map((w,i)=>'W'+(i+1));
   const upto = idx+1;
   const actualWeights = STATE.weeks.slice(0,upto).map(w=> typeof w.startWeight==='number'? w.startWeight: null);
@@ -1143,7 +1199,7 @@ function renderDash(){
     labels:labels.slice(0,upto),
     refLine: s.goalWeight
   });
- 
+
   const waistCmSeries = STATE.weeks.slice(0,upto).map(w=> typeof w.startWaist==='number'? w.startWaist: null);
   const aspWaistSeries = aspirationalWaistSeries().slice(0,upto);
   lineChart(document.getElementById('chartWaist'), {
@@ -1155,7 +1211,7 @@ function renderDash(){
     refLine: s.goalWaist,
     yFormat:v=>v.toFixed(0)+'cm'
   });
- 
+
   const whtrSeries = STATE.weeks.slice(0,upto).map((w,i)=> weekMetrics(i).whtr);
   bandChart(document.getElementById('chartWhtr'), {
     series:whtrSeries, labels:labels.slice(0,upto),
@@ -1163,7 +1219,7 @@ function renderDash(){
     minY:0.3, maxY:0.65,
     valueLabel:v=>v.toFixed(2)
   });
- 
+
   const bmiSeries = STATE.weeks.slice(0,upto).map((w,i)=> weekMetrics(i).bmi);
   bandChart(document.getElementById('chartBmi'), {
     series:bmiSeries, labels:labels.slice(0,upto),
@@ -1171,17 +1227,32 @@ function renderDash(){
     minY:15, maxY:BMI_OBESE+2,
     valueLabel:v=>v
   });
- 
+
   const deltas = STATE.weeks.slice(0,Math.max(0,upto-1)).map((w,i)=> weekDelta(i));
   barChartWithLine(document.getElementById('chartDelta'), { bars:deltas, labels:labels.slice(0,Math.max(0,upto-1)), refValue:0 });
- 
+
+  document.getElementById('energyUnitToggle').querySelectorAll('.unit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      STATE.settings.energyUnit = btn.dataset.unit;
+      saveState();
+      renderDash();
+    });
+  });
+  document.getElementById('weightUnitToggle').querySelectorAll('.unit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      STATE.settings.weightUnit = btn.dataset.unit;
+      saveState();
+      renderDash();
+    });
+  });
+
   const sel = document.getElementById('quotaCatSelect');
   sel.innerHTML = CATEGORIES.map(c=>`<option value="${c.key}">${c.label}</option>`).join('');
   sel.value = STATE._lastQuotaCat || 'protein';
   sel.addEventListener('change', ()=>{ STATE._lastQuotaCat = sel.value; renderQuotaChart(sel.value, idx); });
   renderQuotaChart(sel.value, idx);
 }
- 
+
 function renderQuotaChart(catKey, uptoIdx){
   const quota = quotaFor(catKey);
   const days = [];
@@ -1196,7 +1267,7 @@ function renderQuotaChart(catKey, uptoIdx){
   }
   barChartWithLine(document.getElementById('chartQuota'), { bars:days, labels, refValue:quota });
 }
- 
+
 /* =========================================================================
    VIEW: TODAY — quick single-day entry with sliders + steppers, colour-coded
    against the quota. Writes into the same data the This Week tab reads.
@@ -1205,25 +1276,25 @@ function renderToday(){
   const el = document.getElementById('view-today');
   const { weekIdx, dayIdx, todayISO, inRange } = todayLocation();
   const week = STATE.weeks[weekIdx];
- 
+
   let bannerHtml = '';
   if(!inRange){
     bannerHtml = `<div class="today-banner">Today's date falls outside the 69-week tracker, so this is showing the nearest day (Week ${weekIdx+1}, ${DAY_NAMES[dayIdx]}).</div>`;
   } else if(dayIdx===0 && (typeof week.startWaist !== 'number' || !week.activity)){
     bannerHtml = `<div class="today-banner"><span>It's Monday — don't forget this week's waist measurement and activity level.</span><button class="btn secondary" id="gotoWeighInBtn">Go to This Week</button></div>`;
   }
- 
+
   const dayWeight = week.days[dayIdx].weight;
   const lastWeight = lastKnownWeight(weekIdx, dayIdx);
   const displayWeight = typeof dayWeight==='number' ? dayWeight : lastWeight; /* pre-filled starting point; not saved until confirmed */
- 
+
   el.innerHTML = `
     <div class="today-header">
       <h2>${DAY_NAMES[dayIdx]}</h2>
       <span class="sub-date">${fmtDate(todayISO)} · Week ${weekIdx+1} of ${TOTAL_WEEKS}</span>
     </div>
     ${bannerHtml}
- 
+
     <section class="block">
       <h2>Today's weight</h2>
       <div class="sub">Logged daily. The first weigh-in of a new week automatically sets that week's official weight to last week's daily average — waist and activity level stay weekly entries on This Week.</div>
@@ -1234,12 +1305,12 @@ function renderToday(){
       </div>
       <div class="today-sub">${lastWeight!==null ? `Last recorded: ${trimNum(lastWeight)}kg` : 'No previous weight on record yet'}</div>
     </section>
- 
+
     <div class="today-grid" id="todayGrid"></div>
   `;
- 
+
   const weightInput = document.getElementById('todayWeightInput');
- 
+
   function commitWeight(newVal){
     const day = STATE.weeks[weekIdx].days[dayIdx];
     const priorCount = weekDailyWeights(weekIdx).length - (typeof day.weight==='number' ? 1 : 0);
@@ -1249,7 +1320,7 @@ function renderToday(){
     showToast(autoMsg || 'Saved');
     renderAll();
   }
- 
+
   function tryCommitWeight(newVal){
     if(newVal === null){
       commitWeight(null);
@@ -1279,7 +1350,7 @@ function renderToday(){
       commitWeight(newVal);
     }
   }
- 
+
   weightInput.addEventListener('change', e=>{
     const v = e.target.value==='' ? null : parseFloat(e.target.value);
     tryCommitWeight(v);
@@ -1292,14 +1363,14 @@ function renderToday(){
     const base = typeof dayWeight==='number' ? dayWeight : (lastWeight ?? 0);
     tryCommitWeight(Math.round((base+0.1)*10)/10);
   });
- 
+
   const grid = document.getElementById('todayGrid');
   grid.innerHTML = CATEGORIES.map(cat=>todayCardHTML(cat, weekIdx, dayIdx)).join('');
- 
+
   grid.querySelectorAll('.today-card').forEach(card=>{
     const key = card.dataset.card;
     const cat = CATEGORIES.find(c=>c.key===key);
- 
+
     card.querySelectorAll('.stepper').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const cur = STATE.weeks[weekIdx].days[dayIdx][key] ?? 0;
@@ -1309,13 +1380,13 @@ function renderToday(){
         refreshTodayCard(card, cat, weekIdx, dayIdx);
       });
     });
- 
+
     const infoBtn = card.querySelector('.info-btn');
     if(infoBtn){
       infoBtn.addEventListener('click', ()=> showInfo(cat.label, cat.unit));
     }
   });
- 
+
   const weighInBtn = document.getElementById('gotoWeighInBtn');
   if(weighInBtn){
     weighInBtn.addEventListener('click', ()=>{
@@ -1324,7 +1395,7 @@ function renderToday(){
     });
   }
 }
- 
+
 /* the value shown/edited for a cumulative category (Indulgence) is the
    running weekly total including today, not today's entry in isolation;
    it naturally carries day to day and only starts fresh on Monday since
@@ -1332,7 +1403,7 @@ function renderToday(){
 function todayDisplayValue(p, cat){
   return cat.cumulative ? p.used : p.rawToday;
 }
- 
+
 function todayCardHTML(cat, weekIdx, dayIdx){
   const p = categoryProgress(weekIdx, dayIdx, cat.key);
   const max = sliderMax(p.quota);
@@ -1355,7 +1426,7 @@ function todayCardHTML(cat, weekIdx, dayIdx){
     <div class="today-sub" data-sub>${todaySubText(p, cat)}</div>
   </div>`;
 }
- 
+
 function refreshTodayCard(card, cat, weekIdx, dayIdx){
   const p = categoryProgress(weekIdx, dayIdx, cat.key);
   const max = sliderMax(p.quota);
@@ -1368,7 +1439,7 @@ function refreshTodayCard(card, cat, weekIdx, dayIdx){
   card.querySelector('[data-sub]').textContent = todaySubText(p, cat);
   card.querySelector('[data-slider]').value = Math.max(0, Math.min(max, displayVal ?? 0));
 }
- 
+
 /* =========================================================================
    VIEW: EXERCISE — free-text description + a 15-minute-increment duration,
    multiple entries per day, with a running total. Stored as day.exercise[],
@@ -1391,10 +1462,10 @@ function formatMinutes(mins){
   const h = Math.floor(mins/60), m = mins%60;
   return m>0 ? `${h}h ${m}min` : `${h}h`;
 }
- 
+
 const EXERCISE_MAX_OFFSET = TOTAL_WEEKS*7 - 1;
 let currentExerciseOffset = null; /* absolute day index (week*7 + day) across the whole 69-week tracker */
- 
+
 function todayExerciseOffset(){
   const loc = todayLocation();
   return loc.weekIdx*7 + loc.dayIdx;
@@ -1403,7 +1474,7 @@ function exerciseWeekDayFromOffset(offset){
   const clamped = Math.max(0, Math.min(EXERCISE_MAX_OFFSET, offset));
   return { weekIdx: Math.floor(clamped/7), dayIdx: clamped%7 };
 }
- 
+
 function renderExercise(){
   if(currentExerciseOffset === null) currentExerciseOffset = todayExerciseOffset();
   const el = document.getElementById('view-exercise');
@@ -1411,14 +1482,14 @@ function renderExercise(){
   const dateISO = addDaysISO(STATE.weeks[weekIdx].startDate, dayIdx);
   const isToday = currentExerciseOffset === todayExerciseOffset();
   const total = exerciseTotalMinutes(weekIdx, dayIdx);
- 
+
   el.innerHTML = `
     <div class="week-nav">
       <button class="btn ghost" id="prevExerciseDayBtn" ${currentExerciseOffset<=0?'disabled':''}>&larr; Previous day</button>
       <div class="center">${DAY_NAMES[dayIdx]}${isToday?' (today)':''}<span class="date">${fmtDate(dateISO)} · Week ${weekIdx+1} of ${TOTAL_WEEKS}</span></div>
       <button class="btn ghost" id="nextExerciseDayBtn" ${currentExerciseOffset>=EXERCISE_MAX_OFFSET?'disabled':''}>Next day &rarr;</button>
     </div>
- 
+
     <section class="block">
       <h2>Exercise</h2>
       <div class="sub">Log as many entries as you like — walking, weights, swimming, whatever you did</div>
@@ -1426,14 +1497,14 @@ function renderExercise(){
       <button class="btn secondary" id="addExerciseBtn" style="margin-top:10px;">+ Add exercise</button>
       <div class="exercise-total">Total: <strong>${formatMinutes(total)}</strong></div>
     </section>
- 
+
     <div style="display:flex;justify-content:flex-end;">
       <button class="btn ghost" id="jumpExerciseTodayBtn" ${isToday?'disabled':''}>Jump to today</button>
     </div>
   `;
- 
+
   renderExerciseList(weekIdx, dayIdx);
- 
+
   document.getElementById('addExerciseBtn').addEventListener('click', ()=>{
     const day = STATE.weeks[weekIdx].days[dayIdx];
     if(!day.exercise) day.exercise = [];
@@ -1442,7 +1513,7 @@ function renderExercise(){
     renderExerciseList(weekIdx, dayIdx);
     updateExerciseTotal(weekIdx, dayIdx);
   });
- 
+
   document.getElementById('prevExerciseDayBtn').addEventListener('click', ()=>{
     currentExerciseOffset = Math.max(0, currentExerciseOffset-1);
     renderExercise();
@@ -1456,16 +1527,16 @@ function renderExercise(){
     renderExercise();
   });
 }
- 
+
 function renderExerciseList(weekIdx, dayIdx){
   const list = document.getElementById('exerciseList');
   const entries = exerciseEntriesFor(weekIdx, dayIdx);
- 
+
   if(!entries.length){
     list.innerHTML = `<p class="empty-note">No exercise logged for today yet.</p>`;
     return;
   }
- 
+
   list.innerHTML = entries.map((entry,i)=>`
     <div class="exercise-row" data-idx="${i}">
       <input type="text" class="exercise-desc" data-idx="${i}" placeholder="e.g. Walking" value="${(entry.description||'').replace(/"/g,'&quot;')}">
@@ -1475,7 +1546,7 @@ function renderExerciseList(weekIdx, dayIdx){
       <button class="exercise-remove" data-idx="${i}" aria-label="Remove">&times;</button>
     </div>
   `).join('');
- 
+
   list.querySelectorAll('.exercise-desc').forEach(inp=>{
     inp.addEventListener('change', ()=>{
       const i = +inp.dataset.idx;
@@ -1501,31 +1572,31 @@ function renderExerciseList(weekIdx, dayIdx){
     });
   });
 }
- 
+
 function updateExerciseTotal(weekIdx, dayIdx){
   const el = document.querySelector('.exercise-total');
   if(el) el.innerHTML = `Total: <strong>${formatMinutes(exerciseTotalMinutes(weekIdx, dayIdx))}</strong>`;
 }
- 
+
 /* =========================================================================
    VIEW: WEEK LOG
    ========================================================================= */
 let currentWeekIdx = null;
- 
+
 function renderWeek(){
   if(currentWeekIdx === null) currentWeekIdx = todayLocation().weekIdx;
   const el = document.getElementById('view-week');
   const w = STATE.weeks[currentWeekIdx];
- 
+
   const dayDates = Array.from({length:7}, (_,i)=> addDaysISO(w.startDate, i));
- 
+
   el.innerHTML = `
     <div class="week-nav">
       <button class="btn ghost" id="prevWeekBtn" ${currentWeekIdx===0?'disabled':''}>&larr; Previous</button>
       <div class="center">Week ${currentWeekIdx+1} of ${TOTAL_WEEKS}<span class="date">Starting Monday ${fmtDate(w.startDate)}</span></div>
       <button class="btn ghost" id="nextWeekBtn" ${currentWeekIdx===TOTAL_WEEKS-1?'disabled':''}>Next &rarr;</button>
     </div>
- 
+
     <section class="block">
       <div class="week-meta">
         <div><label class="field">Start weight (kg)</label><input type="number" step="0.1" id="inpWeight" value="${w.startWeight ?? ''}"></div>
@@ -1548,7 +1619,7 @@ function renderWeek(){
         </table>
       </details>
     </section>
- 
+
     <section class="block">
       <h2>Daily food quotas</h2>
       <div class="sub">All categories reset each day, except Indulgence, which accumulates across the week and resets Monday.</div>
@@ -1556,17 +1627,17 @@ function renderWeek(){
         <div class="day-cols" id="dayCols"></div>
       </div>
     </section>
- 
+
     <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
       <button class="btn ghost" id="jumpTodayBtn">Jump to today's week</button>
       <button class="btn secondary" id="jumpCurrentBtn">Jump to next unlogged week</button>
     </div>
   `;
- 
+
   const grid = document.getElementById('dayCols');
   let html = `<div class="rowhead">Category</div>`;
   dayDates.forEach((d,i)=> html += `<div class="colhead">${DAY_NAMES[i].slice(0,3)}<span class="d">${fmtDateShort(d)}</span></div>`);
- 
+
   CATEGORIES.forEach(cat=>{
     html += `<div class="rowhead ${cat.cumulative?'cat-indulgence':''}" title="${cat.unit}">${cat.label}<span class="quota">&nbsp;(quota ${quotaFor(cat.key)})</span></div>`;
     for(let d=0; d<7; d++){
@@ -1579,7 +1650,7 @@ function renderWeek(){
   });
   grid.innerHTML = html;
   updateAllRemaining();
- 
+
   grid.querySelectorAll('.dayInput').forEach(inp=>{
     inp.addEventListener('input', ()=>{
       const d = +inp.dataset.day, cat = inp.dataset.cat;
@@ -1589,7 +1660,7 @@ function renderWeek(){
       saveState();
     });
   });
- 
+
   document.getElementById('inpWeight').addEventListener('change', e=>{
     const v = e.target.value===''? null : parseFloat(e.target.value);
     STATE.weeks[currentWeekIdx].startWeight = (v===null||isNaN(v))?null:v;
@@ -1607,13 +1678,13 @@ function renderWeek(){
       : 'Used to estimate your daily energy output';
     saveState(); showToast('Saved');
   });
- 
+
   document.getElementById('prevWeekBtn').addEventListener('click', ()=>{ currentWeekIdx=Math.max(0,currentWeekIdx-1); renderWeek(); });
   document.getElementById('nextWeekBtn').addEventListener('click', ()=>{ currentWeekIdx=Math.min(TOTAL_WEEKS-1,currentWeekIdx+1); renderWeek(); });
   document.getElementById('jumpTodayBtn').addEventListener('click', ()=>{ currentWeekIdx=todayLocation().weekIdx; renderWeek(); });
   document.getElementById('jumpCurrentBtn').addEventListener('click', ()=>{ currentWeekIdx=nextUnloggedWeekIndex(); renderWeek(); });
 }
- 
+
 function updateAllRemaining(){
   CATEGORIES.forEach(cat=>{
     for(let d=0; d<7; d++){
@@ -1626,19 +1697,19 @@ function updateAllRemaining(){
     }
   });
 }
- 
+
 /* =========================================================================
    VIEW: HISTORY (mirrors the Data tab)
    ========================================================================= */
 function renderHistory(){
   const el = document.getElementById('view-history');
   const rows = STATE.weeks.map((w,i)=>({i, m:weekMetrics(i), delta:weekDelta(i), waistDelta:waistDelta(i), exerciseMins:weekExerciseTotalMinutes(i)})).filter(r=> typeof r.m.weight === 'number');
- 
+
   if(!rows.length){
     el.innerHTML = `<section class="block"><p class="empty-note">Nothing logged yet — your history will appear here week by week.</p></section>`;
     return;
   }
- 
+
   el.innerHTML = `
     <section class="block">
       <h2>Log book</h2>
@@ -1671,14 +1742,14 @@ function renderHistory(){
     </section>
   `;
 }
- 
+
 /* =========================================================================
    VIEW: SETTINGS
    ========================================================================= */
 function renderSettings(){
   const el = document.getElementById('view-settings');
   const s = STATE.settings;
- 
+
   const groups = ['Light','Dark'];
   const themeHtml = groups.map(g=>{
     const cards = THEME_ORDER.filter(k=>THEMES[k].group===g).map(k=>{
@@ -1692,14 +1763,14 @@ function renderSettings(){
     }).join('');
     return `<div><div class="theme-group-label">${g}</div><div class="theme-cards">${cards}</div></div>`;
   }).join('');
- 
+
   el.innerHTML = `
     <section class="block">
       <h2>Colour theme</h2>
       <div class="sub">Pick a palette — it applies everywhere, including the charts</div>
       <div class="theme-groups">${themeHtml}</div>
     </section>
- 
+
     <section class="block">
       <h2>Calendar</h2>
       <div class="sub">The Monday your 69-week tracker begins on. Changing this shifts every week's dates but keeps all your logged data exactly where it is.</div>
@@ -1713,7 +1784,7 @@ function renderSettings(){
         </div>
       </div>
     </section>
- 
+
     <section class="block">
       <h2>Goals &amp; personal details</h2>
       <div class="sub">These feed the BMI, waist %, and energy-output calculations, matching the Reference tab of the original spreadsheet</div>
@@ -1732,7 +1803,7 @@ function renderSettings(){
         <div><label class="field">Aspirational weekly waist loss (cm)</label><input type="number" step="0.05" id="setAspirationWaist" value="${s.aspirationRateWaist}"></div>
       </div>
     </section>
- 
+
     <section class="block">
       <h2>Daily quotas</h2>
       <div class="sub">Units per day for each food category (Indulgence accumulates for the week)</div>
@@ -1749,7 +1820,7 @@ function renderSettings(){
           <input type="number" step="0.25" min="0" data-quota="${c.key}" value="${s.quotas[c.key]}">
         </div>`).join('')}
     </section>
- 
+
     <section class="block">
       <h2>Backup</h2>
       <div class="sub">Everything is stored only in this browser. Export a copy from time to time.</div>
@@ -1761,14 +1832,14 @@ function renderSettings(){
       <input type="file" id="importFile" accept="application/json" style="display:none;">
     </section>
   `;
- 
+
   el.querySelectorAll('.theme-card').forEach(card=>{
     card.addEventListener('click', ()=>{
       applyTheme(card.dataset.theme);
       renderAll();
     });
   });
- 
+
   document.getElementById('applyWeek1DateBtn').addEventListener('click', ()=>{
     const input = document.getElementById('setWeek1Date');
     const newDate = input.value;
@@ -1795,7 +1866,7 @@ function renderSettings(){
       }
     );
   });
- 
+
   el.querySelectorAll('#setGoalWeight,#setGoalWaist,#setHeight,#setAge,#setAspiration,#setAspirationWaist').forEach(inp=>{
     inp.addEventListener('change', ()=>{
       s.goalWeight = parseFloat(document.getElementById('setGoalWeight').value)||s.goalWeight;
@@ -1830,7 +1901,7 @@ function renderSettings(){
       saveState(); showToast('Quota saved');
     });
   });
- 
+
   document.getElementById('exportBtn').addEventListener('click', ()=>{
     const blob = new Blob([JSON.stringify(STATE,null,2)], {type:'application/json'});
     const a = document.createElement('a');
@@ -1871,7 +1942,7 @@ function renderSettings(){
     });
   });
 }
- 
+
 /* =========================================================================
    UTIL / NAV
    ========================================================================= */
@@ -1890,7 +1961,7 @@ function showToast(msg){
   clearTimeout(showToast._h);
   showToast._h = setTimeout(()=>t.classList.remove('show'), 1800);
 }
- 
+
 /* Replaces window.confirm(), which is unreliable inside installed PWAs and
    Android TWA wrappers (often silently suppressed or auto-dismissed). Shows
    an in-app overlay instead; onConfirm runs only if the person taps Confirm. */
@@ -1914,7 +1985,7 @@ function showConfirm(message, onConfirm, onCancel){
     onConfirm();
   });
 }
- 
+
 /* Simple read-only info popup — same overlay styling as showConfirm, but a
    single Close button and no destructive action behind it. */
 function showInfo(title, message){
@@ -1933,7 +2004,7 @@ function showInfo(title, message){
   overlay.querySelector('[data-act="close"]').addEventListener('click', close);
   overlay.addEventListener('click', e=>{ if(e.target===overlay) close(); });
 }
- 
+
 function renderAll(){
   renderDash();
   renderToday();
@@ -1942,7 +2013,7 @@ function renderAll(){
   renderHistory();
   renderSettings();
 }
- 
+
 function setupNav(){
   const buttons = document.querySelectorAll('nav.tabs button');
   buttons.forEach(btn=>{
@@ -1965,7 +2036,7 @@ function setupNav(){
   }, 200));
 }
 function debounce(fn, ms){ let h; return (...a)=>{ clearTimeout(h); h=setTimeout(()=>fn(...a), ms); }; }
- 
+
 /* =========================================================================
    INIT
    ========================================================================= */
@@ -1975,7 +2046,7 @@ document.getElementById('todayLabel').textContent = new Date().toLocaleDateStrin
 setupNav();
 renderAll();
 </script>
- 
+
 <script>
 /* Register the service worker so the app keeps working offline once it has
    been opened at least once. Safe to no-op if the browser doesn't support it
@@ -1988,4 +2059,3 @@ if('serviceWorker' in navigator && (location.protocol==='https:' || location.hos
 </script>
 </body>
 </html>
- 
