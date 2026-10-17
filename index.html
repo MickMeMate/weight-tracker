@@ -142,6 +142,8 @@
   .remaining.over{color:var(--warn); font-weight:600;}
   .remaining.ok{color:var(--accent);}
   .day-cols .cat-indulgence{background:var(--highlight-soft);}
+  .day-cols .cat-weight{background:var(--accent-pale);}
+  .day-cols .cat-weight input{font-weight:600;}
   .day-cols .rowhead.cat-indulgence, .day-cols .colhead{color:var(--ink);}
 
   .week-meta{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px;}
@@ -450,6 +452,42 @@ const THEMES = {
 };
 const THEME_ORDER = ['meadow','sunset','ocean','lavender','clay','midnight','berry','spruce','bumblebee','amethyst'];
 
+/* Font options for Settings. "google" is the fonts.googleapis.com family
+   query for that font — null means it's already on virtually every device
+   and needs no network request at all. Picking a non-system font sets BOTH
+   the heading and body font to the same family for a clean, unified look;
+   "System default" is the only option that keeps the app's original
+   Georgia-headings + system-sans-body pairing. */
+const FONT_OPTIONS = [
+  { key:'system',       label:'System default',        stack:"-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", google:null },
+  { key:'arial',        label:'Arial',                  stack:"Arial, Helvetica, sans-serif", google:null },
+  { key:'roboto',       label:'Roboto',                 stack:"'Roboto', sans-serif", google:'Roboto:wght@400;600;700' },
+  { key:'opensans',     label:'Open Sans',              stack:"'Open Sans', sans-serif", google:'Open+Sans:wght@400;600;700' },
+  { key:'lato',         label:'Lato',                   stack:"'Lato', sans-serif", google:'Lato:wght@400;700' },
+  { key:'poppins',      label:'Poppins',                stack:"'Poppins', sans-serif", google:'Poppins:wght@400;600;700' },
+  { key:'inter',        label:'Inter',                  stack:"'Inter', sans-serif", google:'Inter:wght@400;600;700' },
+  { key:'merriweather', label:'Merriweather (serif)',   stack:"'Merriweather', serif", google:'Merriweather:wght@400;700' }
+];
+const DEFAULT_SERIF_STACK = "Georgia, 'Iowan Old Style', 'Palatino Linotype', serif";
+
+function applyFont(key){
+  const f = FONT_OPTIONS.find(x=>x.key===key) || FONT_OPTIONS[0];
+  const root = document.documentElement.style;
+  root.setProperty('--sans', f.stack);
+  root.setProperty('--serif', f.key==='system' ? DEFAULT_SERIF_STACK : f.stack);
+  if(f.google){
+    const linkId = 'google-font-'+f.key;
+    if(!document.getElementById(linkId)){
+      const link = document.createElement('link');
+      link.id = linkId;
+      link.rel = 'stylesheet';
+      link.href = `https://fonts.googleapis.com/css2?family=${f.google}&display=swap`;
+      document.head.appendChild(link);
+    }
+  }
+  if(STATE){ STATE.settings.font = key; saveState(); }
+}
+
 function applyTheme(key){
   const t = THEMES[key] || THEMES.meadow;
   const root = document.documentElement.style;
@@ -505,7 +543,7 @@ function buildDefaultState(){
   return {
     settings:{
       height:176, age:50, sex:'male', goalWeight:80, goalWaist:90, aspirationRate:0.2, aspirationRateWaist:0.3, theme:'meadow',
-      quotaLevel:8000, energyUnit:'kj', weightUnit:'kg',
+      quotaLevel:8000, energyUnit:'kj', weightUnit:'kg', font:'system',
       quotas:Object.fromEntries(CATEGORIES.map(c=>[c.key,c.quota]))
     },
     weeks
@@ -522,6 +560,7 @@ function backfillSettings(settings){
   if(typeof settings.aspirationRateWaist !== 'number') settings.aspirationRateWaist=0.3;
   if(!settings.energyUnit) settings.energyUnit='kj';
   if(!settings.weightUnit) settings.weightUnit='kg';
+  if(!settings.font) settings.font='system';
   return settings;
 }
 
@@ -612,6 +651,43 @@ function maybeAutoSetWeeklyWeight(weekIdx, priorCount){
   const rounded = Math.round(prevAvg*10)/10;
   STATE.weeks[weekIdx].startWeight = rounded;
   return `Week ${weekIdx+1} weight auto-set to ${rounded}kg (last week's daily average)`;
+}
+
+/* Shared daily-weight commit logic — used by both the Today tab's weight
+   field and This Week's new Weight row, so retroactively filling in a past
+   day gets exactly the same validation and auto-averaging behaviour as
+   logging today's weight does. */
+function commitDailyWeight(weekIdx, dayIdx, newVal){
+  const day = STATE.weeks[weekIdx].days[dayIdx];
+  const priorCount = weekDailyWeights(weekIdx).length - (typeof day.weight==='number' ? 1 : 0);
+  day.weight = newVal;
+  const autoMsg = maybeAutoSetWeeklyWeight(weekIdx, priorCount);
+  saveState();
+  showToast(autoMsg || 'Saved');
+}
+function tryCommitDailyWeight(weekIdx, dayIdx, newVal, onDone){
+  if(newVal === null){ commitDailyWeight(weekIdx, dayIdx, null); onDone(); return; }
+  if(isNaN(newVal)){ showToast('Enter a valid number'); onDone(); return; }
+  const initW = initialWeight();
+  const rangeMin = initW!==null ? initW - WEIGHT_RANGE_SPAN_KG : WEIGHT_FALLBACK_MIN;
+  const rangeMax = initW!==null ? initW + WEIGHT_RANGE_SPAN_KG : WEIGHT_FALLBACK_MAX;
+  if(newVal < rangeMin || newVal > rangeMax){
+    showToast(`Enter a realistic weight between ${trimNum(rangeMin)} and ${trimNum(rangeMax)} kg`);
+    onDone();
+    return;
+  }
+  const lastWeight = lastKnownWeight(weekIdx, dayIdx);
+  const diff = lastWeight!==null ? Math.abs(newVal - lastWeight) : 0;
+  if(lastWeight!==null && diff > WEIGHT_CHANGE_FLAG_KG){
+    showConfirm(
+      `That's a ${trimNum(diff)}kg change from the last recorded weight before this day (${trimNum(lastWeight)}kg). Save it anyway?`,
+      ()=>{ commitDailyWeight(weekIdx, dayIdx, newVal); onDone(); },
+      ()=> onDone()
+    );
+  } else {
+    commitDailyWeight(weekIdx, dayIdx, newVal);
+    onDone();
+  }
 }
 
 /* Most recent weight on record strictly before (weekIdx, dayIdx) — checks each
@@ -1311,57 +1387,17 @@ function renderToday(){
 
   const weightInput = document.getElementById('todayWeightInput');
 
-  function commitWeight(newVal){
-    const day = STATE.weeks[weekIdx].days[dayIdx];
-    const priorCount = weekDailyWeights(weekIdx).length - (typeof day.weight==='number' ? 1 : 0);
-    day.weight = newVal;
-    const autoMsg = maybeAutoSetWeeklyWeight(weekIdx, priorCount);
-    saveState();
-    showToast(autoMsg || 'Saved');
-    renderAll();
-  }
-
-  function tryCommitWeight(newVal){
-    if(newVal === null){
-      commitWeight(null);
-      return;
-    }
-    if(isNaN(newVal)){
-      showToast('Enter a valid number');
-      renderToday();
-      return;
-    }
-    const initW = initialWeight();
-    const rangeMin = initW!==null ? initW - WEIGHT_RANGE_SPAN_KG : WEIGHT_FALLBACK_MIN;
-    const rangeMax = initW!==null ? initW + WEIGHT_RANGE_SPAN_KG : WEIGHT_FALLBACK_MAX;
-    if(newVal < rangeMin || newVal > rangeMax){
-      showToast(`Enter a realistic weight between ${trimNum(rangeMin)} and ${trimNum(rangeMax)} kg`);
-      renderToday();
-      return;
-    }
-    const diff = lastWeight!==null ? Math.abs(newVal - lastWeight) : 0;
-    if(lastWeight!==null && diff > WEIGHT_CHANGE_FLAG_KG){
-      showConfirm(
-        `That's a ${trimNum(diff)}kg change from your last recorded weight (${trimNum(lastWeight)}kg). Save it anyway?`,
-        ()=> commitWeight(newVal),
-        ()=> renderToday() /* cancelled — revert the field to the last saved value */
-      );
-    } else {
-      commitWeight(newVal);
-    }
-  }
-
   weightInput.addEventListener('change', e=>{
     const v = e.target.value==='' ? null : parseFloat(e.target.value);
-    tryCommitWeight(v);
+    tryCommitDailyWeight(weekIdx, dayIdx, v, renderAll);
   });
   document.getElementById('weightMinusBtn').addEventListener('click', ()=>{
     const base = typeof dayWeight==='number' ? dayWeight : (lastWeight ?? 0);
-    tryCommitWeight(Math.round((base-0.1)*10)/10);
+    tryCommitDailyWeight(weekIdx, dayIdx, Math.round((base-0.1)*10)/10, renderAll);
   });
   document.getElementById('weightPlusBtn').addEventListener('click', ()=>{
     const base = typeof dayWeight==='number' ? dayWeight : (lastWeight ?? 0);
-    tryCommitWeight(Math.round((base+0.1)*10)/10);
+    tryCommitDailyWeight(weekIdx, dayIdx, Math.round((base+0.1)*10)/10, renderAll);
   });
 
   const grid = document.getElementById('todayGrid');
@@ -1621,8 +1657,8 @@ function renderWeek(){
     </section>
 
     <section class="block">
-      <h2>Daily food quotas</h2>
-      <div class="sub">All categories reset each day, except Indulgence, which accumulates across the week and resets Monday.</div>
+      <h2>Daily tracking</h2>
+      <div class="sub">Weight plus all food categories, one row each. Food categories reset each day, except Indulgence, which accumulates across the week and resets Monday. Fill in or correct any day retroactively — weight changes here follow the same validation and weekly-average rules as the Today tab.</div>
       <div style="overflow-x:auto;">
         <div class="day-cols" id="dayCols"></div>
       </div>
@@ -1637,6 +1673,14 @@ function renderWeek(){
   const grid = document.getElementById('dayCols');
   let html = `<div class="rowhead">Category</div>`;
   dayDates.forEach((d,i)=> html += `<div class="colhead">${DAY_NAMES[i].slice(0,3)}<span class="d">${fmtDateShort(d)}</span></div>`);
+
+  html += `<div class="rowhead cat-weight">Weight (kg)</div>`;
+  for(let d=0; d<7; d++){
+    const val = w.days[d].weight;
+    html += `<div class="cat-weight">
+      <input type="number" step="0.1" data-day="${d}" class="weightDayInput" value="${val ?? ''}" placeholder="—">
+    </div>`;
+  }
 
   CATEGORIES.forEach(cat=>{
     html += `<div class="rowhead ${cat.cumulative?'cat-indulgence':''}" title="${cat.unit}">${cat.label}<span class="quota">&nbsp;(quota ${quotaFor(cat.key)})</span></div>`;
@@ -1658,6 +1702,14 @@ function renderWeek(){
       STATE.weeks[currentWeekIdx].days[d][cat] = (v===null || isNaN(v)) ? null : v;
       updateAllRemaining();
       saveState();
+    });
+  });
+
+  grid.querySelectorAll('.weightDayInput').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const d = +inp.dataset.day;
+      const v = inp.value==='' ? null : parseFloat(inp.value);
+      tryCommitDailyWeight(currentWeekIdx, d, v, renderAll);
     });
   });
 
@@ -1772,6 +1824,14 @@ function renderSettings(){
     </section>
 
     <section class="block">
+      <h2>Font</h2>
+      <div class="sub">Changes the look of text throughout the app. System default and Arial are already on your device and work fully offline; Roboto, Open Sans, Lato, Poppins, Inter and Merriweather load from Google Fonts and need an internet connection the first time they're used.</div>
+      <select id="setFont" style="max-width:260px;">
+        ${FONT_OPTIONS.map(f=>`<option value="${f.key}" ${s.font===f.key?'selected':''}>${f.label}</option>`).join('')}
+      </select>
+    </section>
+
+    <section class="block">
       <h2>Calendar</h2>
       <div class="sub">The Monday your 69-week tracker begins on. Changing this shifts every week's dates but keeps all your logged data exactly where it is.</div>
       <div class="settings-grid">
@@ -1838,6 +1898,11 @@ function renderSettings(){
       applyTheme(card.dataset.theme);
       renderAll();
     });
+  });
+
+  document.getElementById('setFont').addEventListener('change', e=>{
+    applyFont(e.target.value);
+    showToast('Font updated');
   });
 
   document.getElementById('applyWeek1DateBtn').addEventListener('click', ()=>{
@@ -1921,6 +1986,7 @@ function renderSettings(){
           backfillSettings(parsed.settings);
           STATE = parsed;
           applyTheme(STATE.settings.theme);
+          applyFont(STATE.settings.font);
           saveState();
           showToast('Backup imported');
           renderAll();
@@ -1932,8 +1998,11 @@ function renderSettings(){
   document.getElementById('resetBtn').addEventListener('click', ()=>{
     showConfirm('This permanently clears everything in this browser and starts a blank tracker. Make sure you\u2019ve exported a backup first if you want to keep your data. Continue?', ()=>{
       const keepTheme = STATE.settings.theme;
+      const keepFont = STATE.settings.font;
       STATE = buildDefaultState();
       STATE.settings.theme = keepTheme;
+      STATE.settings.font = keepFont;
+      applyFont(keepFont);
       saveState();
       currentWeekIdx = null;
       currentExerciseOffset = null;
@@ -2042,6 +2111,7 @@ function debounce(fn, ms){ let h; return (...a)=>{ clearTimeout(h); h=setTimeout
    ========================================================================= */
 STATE = loadState();
 applyTheme(STATE.settings.theme);
+applyFont(STATE.settings.font);
 document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined,{weekday:'long', day:'numeric', month:'long', year:'numeric'});
 setupNav();
 renderAll();
