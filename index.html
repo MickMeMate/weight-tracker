@@ -744,6 +744,25 @@ function lastLoggedWeekIndex(){
   STATE.weeks.forEach((w,i)=>{ if(typeof w.startWeight==='number') idx=i; });
   return idx;
 }
+/* Weight can now auto-populate on a later week (via the daily average)
+   without week 0 ever having a manually-entered startWeight — so "the
+   first logged week" is no longer safely assumed to be week 0. */
+function firstLoggedWeekIndex(){
+  for(let i=0;i<STATE.weeks.length;i++){ if(typeof STATE.weeks[i].startWeight==='number') return i; }
+  return -1;
+}
+/* Waist stays a once-a-week manual entry, so it can legitimately lag behind
+   the weight index now that weight updates daily — these are tracked
+   separately rather than assumed to match the weight week. */
+function firstLoggedWaistWeekIndex(){
+  for(let i=0;i<STATE.weeks.length;i++){ if(typeof STATE.weeks[i].startWaist==='number') return i; }
+  return -1;
+}
+function lastLoggedWaistWeekIndex(){
+  let idx = -1;
+  STATE.weeks.forEach((w,i)=>{ if(typeof w.startWaist==='number') idx=i; });
+  return idx;
+}
 function nextUnloggedWeekIndex(){
   const last = lastLoggedWeekIndex();
   return Math.min(last+1, TOTAL_WEEKS-1);
@@ -1123,12 +1142,20 @@ function renderDash(){
   }
 
   const cur = weekMetrics(idx);
-  const start = weekMetrics(0);
+  const start = weekMetrics(firstLoggedWeekIndex());
   const weightAchievedPct = (start.weight - cur.weight) / (start.weight - s.goalWeight);
 
-  const startWaistPct = start.waistPct;
-  const curWaistPct = cur.waistPct;
-  const waistAchievedPct = (startWaistPct - curWaistPct) / (startWaistPct - WAIST_HEIGHT_GOAL_PCT);
+  /* Waist is still a once-weekly manual entry, so the week with the latest
+     weight reading may not have a waist reading yet — these are tracked
+     against their own indices rather than assumed to line up with weight. */
+  const waistFirstIdx = firstLoggedWaistWeekIndex();
+  const waistLastIdx = lastLoggedWaistWeekIndex();
+  const hasWaist = waistFirstIdx>=0 && waistLastIdx>=0;
+  const waistStart = hasWaist ? weekMetrics(waistFirstIdx) : null;
+  const waistCur = hasWaist ? weekMetrics(waistLastIdx) : null;
+  const startWaistPct = hasWaist ? waistStart.waistPct : null;
+  const curWaistPct = hasWaist ? waistCur.waistPct : null;
+  const waistAchievedPct = hasWaist ? (startWaistPct - curWaistPct) / (startWaistPct - WAIST_HEIGHT_GOAL_PCT) : null;
 
   el.innerHTML = `
     <div class="grid2">
@@ -1156,6 +1183,7 @@ function renderDash(){
       <section class="block">
         <h2>Waistline — % of height</h2>
         <div class="sub">Health guideline: keep your waist under 50% of your height</div>
+        ${hasWaist ? `
         <div class="stat-row">
           <div class="stat"><div class="num accent">${curWaistPct.toFixed(1)}%</div><div class="lbl">Current</div></div>
           <div class="stat"><div class="num">${startWaistPct.toFixed(1)}%</div><div class="lbl">Start</div></div>
@@ -1165,8 +1193,8 @@ function renderDash(){
           <div class="labels"><span>Start ${startWaistPct.toFixed(1)}%</span><span>Goal ${WAIST_HEIGHT_GOAL_PCT}%</span></div>
           <div class="track"><div class="fill" style="width:${Math.max(0,Math.min(100,waistAchievedPct*100))}%"></div></div>
           <div class="pct">${Math.round(waistAchievedPct*100)}% of the way to goal</div>
-          <div class="secondary">In centimetres: ${cur.waist.toFixed(0)}cm now, started at ${start.waist.toFixed(0)}cm, goal set at ${s.goalWaist.toFixed(0)}cm</div>
-        </div>
+          <div class="secondary">In centimetres: ${waistCur.waist.toFixed(0)}cm now, started at ${waistStart.waist.toFixed(0)}cm, goal set at ${s.goalWaist.toFixed(0)}cm</div>
+        </div>` : `<p class="empty-note">No waist measurement recorded yet — add this week's waist on This Week.</p>`}
       </section>
     </div>
 
@@ -1195,9 +1223,9 @@ function renderDash(){
 
     <div class="grid4">
       <section class="block"><h2>BMI</h2><div class="sub">Current: ${cur.bmi.toFixed(1)}</div><div id="donutBmiWrap" style="display:flex;justify-content:center;"></div></section>
-      <section class="block"><h2>Waist-to-height</h2><div class="sub">Current ratio</div><div id="gaugeWhtrWrap" style="display:flex;justify-content:center;"></div></section>
+      <section class="block"><h2>Waist-to-height</h2><div class="sub">Current ratio</div>${hasWaist ? `<div id="gaugeWhtrWrap" style="display:flex;justify-content:center;"></div>` : `<p class="empty-note">No waist data yet</p>`}</section>
       <section class="block"><h2>Weight goal progress</h2><div class="sub">Achieved vs remaining</div><div id="donutWeightWrap" style="display:flex;justify-content:center;"></div></section>
-      <section class="block"><h2>Waist goal progress</h2><div class="sub">Achieved vs remaining (vs the 50% target)</div><div id="donutWaistWrap" style="display:flex;justify-content:center;"></div></section>
+      <section class="block"><h2>Waist goal progress</h2><div class="sub">Achieved vs remaining (vs the 50% target)</div>${hasWaist ? `<div id="donutWaistWrap" style="display:flex;justify-content:center;"></div>` : `<p class="empty-note">No waist data yet</p>`}</section>
     </div>
 
     <section class="block">
@@ -1249,9 +1277,11 @@ function renderDash(){
   `;
 
   renderBmiGauge(document.getElementById('donutBmiWrap'), cur.bmi);
-  renderWhtrGauge(document.getElementById('gaugeWhtrWrap'), cur.whtr);
   donut(document.getElementById('donutWeightWrap'), {achieved:weightAchievedPct});
-  donut(document.getElementById('donutWaistWrap'), {achieved:waistAchievedPct});
+  if(hasWaist){
+    renderWhtrGauge(document.getElementById('gaugeWhtrWrap'), waistCur.whtr);
+    donut(document.getElementById('donutWaistWrap'), {achieved:waistAchievedPct});
+  }
 
   const accent = themeVar('accent'), highlight = themeVar('highlight'), warn = themeVar('warn');
   document.getElementById('legendWeight').innerHTML = `
