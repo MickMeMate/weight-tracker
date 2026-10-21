@@ -37,7 +37,157 @@
   body{-webkit-tap-highlight-color:transparent; transition:background 0.25s ease, color 0.25s ease;}
   button, input, select{font-family:var(--sans);-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 
-  #app{max-width:1000px;margin:0 auto;padding:0 20px 80px;}%;display:inline-block;}
+  #app{max-width:1000px;margin:0 auto;padding:0 20px 80px;}
+  @media (max-width:480px){ #app{padding:0 12px 70px;} }
+
+  header.top{
+    display:flex;align-items:flex-start;justify-content:space-between;
+    padding:24px 0 16px; border-bottom:1px solid var(--line);
+    flex-wrap:wrap; gap:14px;
+  }
+  header.top h1{
+    font-family:var(--serif); font-weight:400; font-size:26px; margin:0;
+    letter-spacing:0.2px;
+  }
+  header.top .tagline{color:var(--ink-soft); font-size:12.5px; margin-top:4px;}
+  header.top .today{font-size:12.5px; color:var(--ink-faint); text-align:right;}
+
+  nav.tabs{
+    display:flex; gap:2px; margin:16px 0 24px; border-bottom:1px solid var(--line);
+    overflow-x:auto; -ms-overflow-style:none; scrollbar-width:none;
+  }
+  nav.tabs::-webkit-scrollbar{display:none;}
+  nav.tabs button{
+    background:none;border:none;padding:10px 15px;font-size:14px;color:var(--ink-soft);
+    cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0;
+  }
+  nav.tabs button.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+  nav.tabs button:hover{color:var(--accent);}
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* ---------- generic building blocks ---------- */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;}
+  @media (max-width:760px){ .grid2,.grid3{grid-template-columns:1fr;} }
+  @media (max-width:900px){ .grid4{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:480px){ .grid4{grid-template-columns:1fr;} }
+
+  section.block{
+    border:1px solid var(--line); background:var(--paper); border-radius:8px;
+    padding:20px 22px; margin-bottom:18px;
+  }
+  @media (max-width:480px){ section.block{padding:16px 14px; border-radius:6px;} }
+  section.block h2{
+    font-family:var(--serif); font-weight:400; font-size:18px; margin:0 0 4px; color:var(--ink);
+  }
+  section.block .sub{font-size:12.5px;color:var(--ink-faint);margin-bottom:16px;}
+
+  .stat-row{display:flex; align-items:flex-end; gap:22px; flex-wrap:wrap;}
+  .stat{min-width:100px;}
+  .stat .num{font-family:var(--serif); font-size:32px; line-height:1; color:var(--ink);}
+  .stat .num.accent{color:var(--accent);}
+  .stat .lbl{font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.06em; margin-top:6px;}
+
+  .ruler{margin-top:16px;}
+  .ruler .labels{display:flex; justify-content:space-between; font-size:12px; color:var(--ink-soft); margin-bottom:6px;}
+  .ruler .track{position:relative; height:10px; border-radius:5px; background:var(--accent-pale); overflow:visible;}
+  .ruler .fill{position:absolute; top:0; left:0; height:100%; border-radius:5px; background:var(--accent); transition:width 0.3s ease;}
+  .ruler .pct{font-size:12.5px; color:var(--ink-soft); margin-top:8px;}
+  .ruler .secondary{font-size:11.5px; color:var(--ink-faint); margin-top:6px;}
+
+  table.data{width:100%; border-collapse:collapse; font-size:13px;}
+  table.data th{text-align:left; font-weight:600; color:var(--ink-soft); font-size:11px; text-transform:uppercase; letter-spacing:0.04em; padding:6px 8px; border-bottom:1px solid var(--line);}
+  table.data td{padding:7px 8px; border-bottom:1px solid var(--line); white-space:nowrap; color:var(--ink);}
+  table.data tr:last-child td{border-bottom:none;}
+  table.data tbody tr:hover{background:var(--accent-pale);}
+
+  .btn{
+    background:var(--accent); color:#fff; border:none; padding:9px 16px; border-radius:6px;
+    font-size:13.5px; cursor:pointer;
+  }
+  .btn:hover{filter:brightness(0.92);}
+  .btn.secondary{background:none; color:var(--accent); border:1px solid var(--accent);}
+  .btn.secondary:hover{background:var(--accent-pale);}
+  .btn.ghost{background:none;color:var(--ink-soft);border:1px solid var(--line);}
+  .btn.ghost:hover{border-color:var(--ink-faint);}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+  input[type=number], input[type=text], input[type=date], select{
+    padding:8px 9px; border:1px solid var(--line); border-radius:5px; font-size:14px;
+    background:var(--paper); color:var(--ink); width:100%;
+  }
+  input:focus, select:focus{outline:2px solid var(--accent-soft); border-color:var(--accent);}
+  label.field{display:block; font-size:11px; color:var(--ink-soft); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.04em;}
+
+  @media (max-width:480px){
+    input[type=number], input[type=text], select{font-size:16px;} /* prevents iOS auto-zoom */
+  }
+
+  /* ---------- week view ---------- */
+  .week-nav{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; flex-wrap:wrap;}
+  .week-nav .center{font-family:var(--serif); font-size:19px; text-align:center;}
+  .week-nav .center .date{display:block; font-size:12px; color:var(--ink-faint); font-family:var(--sans);}
+
+  .day-cols{display:grid; grid-template-columns:140px repeat(7,minmax(72px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:8px; overflow:hidden; font-size:12.5px; min-width:640px;}
+  .day-cols > div{background:var(--paper); padding:8px 6px;}
+  .day-cols .rowhead{background:var(--accent-pale); font-weight:600; display:flex; align-items:center; color:var(--ink);}
+  .day-cols .colhead{background:var(--accent-pale); text-align:center; font-weight:600; color:var(--ink);}
+  .day-cols .colhead .d{display:block;font-size:11px;color:var(--ink-faint);font-weight:400;}
+  .day-cols .quota{color:var(--ink-faint); font-size:11px; font-weight:400;}
+  .day-cols input[type=number]{padding:5px; text-align:center; font-size:13px;}
+  .day-cols .remaining{text-align:center; font-size:12px; padding-top:8px; color:var(--ink-soft);}
+  .remaining.over{color:var(--warn); font-weight:600;}
+  .remaining.ok{color:var(--accent);}
+  .day-cols .cat-indulgence{background:var(--highlight-soft);}
+  .day-cols .cat-weight{background:var(--accent-pale);}
+  .day-cols .cat-weight input{font-weight:600;}
+  .day-cols .rowhead.cat-indulgence, .day-cols .colhead{color:var(--ink);}
+
+  .week-meta{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:20px;}
+  @media (max-width:640px){ .week-meta{grid-template-columns:1fr 1fr;} }
+  @media (max-width:420px){ .week-meta{grid-template-columns:1fr;} }
+  .activity-legend{margin-top:4px;}
+  .activity-legend summary{font-size:12.5px; color:var(--accent); cursor:pointer; -webkit-tap-highlight-color:transparent;}
+  .activity-legend summary:hover{text-decoration:underline;}
+
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:var(--bg); padding:10px 18px; border-radius:6px; font-size:13px;
+    opacity:0; pointer-events:none; transition:opacity 0.2s; max-width:90vw; text-align:center;
+  }
+  .toast.show{opacity:1;}
+
+  .settings-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:14px 20px;}
+  @media (max-width:640px){ .settings-grid{grid-template-columns:1fr;} }
+  .quota-row{display:grid; grid-template-columns:1.4fr 0.8fr; gap:10px; align-items:center; padding:6px 0;}
+  .quota-prompt-banner{
+    background:var(--warn-soft); border:1px solid var(--warn); border-radius:8px;
+    padding:12px 16px; margin-bottom:14px; font-size:13px; color:var(--ink); line-height:1.5;
+  }
+
+  .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--ink-soft); margin-top:10px;}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .swatch{width:10px;height:10px;border-radius:2px;display:inline-block;}
+
+  .empty-note{color:var(--ink-faint); font-size:13px; font-style:italic;}
+
+  footer.note{font-size:11.5px; color:var(--ink-faint); text-align:center; margin-top:30px; line-height:1.6;}
+
+  /* ---------- theme picker (Settings) ---------- */
+  .theme-groups{display:flex; flex-direction:column; gap:18px;}
+  .theme-group-label{font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-faint); margin-bottom:8px;}
+  .theme-cards{display:flex; gap:12px; flex-wrap:wrap;}
+  .theme-card{
+    border:1.5px solid var(--line); border-radius:8px; padding:10px 12px; cursor:pointer;
+    display:flex; align-items:center; gap:10px; background:var(--paper); min-width:150px;
+    position:relative;
+  }
+  .theme-card.active{border-color:var(--accent);}
+  .theme-card .dots{display:flex; gap:3px;}
+  .theme-card .dots span{width:14px;height:14px;border-radius:50%;display:inline-block;}
   .theme-card .name{font-size:13px; color:var(--ink);}
   .theme-card .check{position:absolute; top:6px; right:8px; font-size:12px; color:var(--accent);}
 
@@ -387,7 +537,7 @@ function buildDefaultState(){
   let cursor = defaultWeek1Monday();
   for(let i=0;i<TOTAL_WEEKS;i++){
     if(i>0) cursor = addDaysISO(cursor,7);
-    weeks.push({ startDate:cursor, startWeight:null, startWaist:null, activity:null,
+    weeks.push({ startDate:cursor, startWeight:null, startWaist:null, activity:null, waistDayCaptured:null,
       days:Array.from({length:7},()=>Object.assign(Object.fromEntries(CATEGORIES.map(c=>[c.key,null])), {exercise:[], weight:null})) });
   }
   return {
@@ -555,6 +705,16 @@ function lastKnownWeight(weekIdx, dayIdx){
       if(typeof day.weight === 'number') return day.weight;
       if(d===0 && typeof week.startWeight === 'number') return week.startWeight;
     }
+  }
+  return null;
+}
+
+/* Most recent waist measurement from any earlier week — used only to give
+   the Today tab's waist stepper a sensible starting point before a value
+   exists for the current (still-uncaptured) week. */
+function lastKnownWaist(weekIdx){
+  for(let w=weekIdx-1; w>=0; w--){
+    if(typeof STATE.weeks[w].startWaist === 'number') return STATE.weeks[w].startWaist;
   }
   return null;
 }
@@ -1236,13 +1396,21 @@ function renderToday(){
   let bannerHtml = '';
   if(!inRange){
     bannerHtml = `<div class="today-banner">Today's date falls outside the 69-week tracker, so this is showing the nearest day (Week ${weekIdx+1}, ${DAY_NAMES[dayIdx]}).</div>`;
-  } else if(dayIdx===0 && (typeof week.startWaist !== 'number' || !week.activity)){
-    bannerHtml = `<div class="today-banner"><span>It's Monday — don't forget this week's waist measurement and activity level.</span><button class="btn secondary" id="gotoWeighInBtn">Go to This Week</button></div>`;
+  } else if(dayIdx===0 && !week.activity){
+    bannerHtml = `<div class="today-banner"><span>It's Monday — don't forget to set this week's activity level.</span><button class="btn secondary" id="gotoWeighInBtn">Go to This Week</button></div>`;
   }
 
   const dayWeight = week.days[dayIdx].weight;
   const lastWeight = lastKnownWeight(weekIdx, dayIdx);
   const displayWeight = typeof dayWeight==='number' ? dayWeight : lastWeight; /* pre-filled starting point; not saved until confirmed */
+
+  /* Shows from the Monday after a new week starts, stays until captured —
+     and then stays visible for the REST of the day it was captured on too,
+     only actually disappearing the following day. week.waistDayCaptured
+     records which day (0-6) it was entered on; older saved data without
+     this field simply falls through to the startWaist check below. */
+  const needsWaist = week.startWaist === null || week.waistDayCaptured === dayIdx;
+  const lastWaist = needsWaist ? lastKnownWaist(weekIdx) : null;
 
   el.innerHTML = `
     <div class="today-header">
@@ -1253,7 +1421,7 @@ function renderToday(){
 
     <section class="block">
       <h2>Today's weight</h2>
-      <div class="sub">Logged daily. The first weigh-in of a new week automatically sets that week's official weight to last week's daily average — waist and activity level stay weekly entries on This Week.</div>
+      <div class="sub">Logged daily. The first weigh-in of a new week automatically sets that week's official weight to last week's daily average.</div>
       <div class="today-value-row">
         <button class="stepper" id="weightMinusBtn" aria-label="Decrease weight">&minus;</button>
         <input type="number" step="0.1" inputmode="decimal" class="weight-input" id="todayWeightInput" placeholder="kg" value="${displayWeight ?? ''}">
@@ -1261,6 +1429,18 @@ function renderToday(){
       </div>
       <div class="today-sub">${lastWeight!==null ? `Last recorded: ${trimNum(lastWeight)}kg` : 'No previous weight on record yet'}</div>
     </section>
+
+    ${needsWaist ? `
+    <section class="block">
+      <h2>This week's waist</h2>
+      <div class="sub">Captured once per week. Stays here until you enter it, remains for the rest of that day, then disappears from the day after — it fills in the same field shown on This Week.</div>
+      <div class="today-value-row">
+        <button class="stepper" id="waistMinusBtn" aria-label="Decrease waist">&minus;</button>
+        <input type="number" step="0.5" inputmode="decimal" class="weight-input" id="todayWaistInput" placeholder="cm" value="${lastWaist ?? ''}">
+        <button class="stepper" id="waistPlusBtn" aria-label="Increase waist">+</button>
+      </div>
+      <div class="today-sub">${lastWaist!==null ? `Last recorded: ${trimNum(lastWaist)}cm` : 'No previous waist measurement on record yet'}</div>
+    </section>` : ''}
 
     <div class="today-grid" id="todayGrid"></div>
   `;
@@ -1279,6 +1459,31 @@ function renderToday(){
     const base = typeof dayWeight==='number' ? dayWeight : (lastWeight ?? 0);
     tryCommitDailyWeight(weekIdx, dayIdx, Math.round((base+0.1)*10)/10, renderAll);
   });
+
+  if(needsWaist){
+    const waistInput = document.getElementById('todayWaistInput');
+    const commitWaist = v=>{
+      STATE.weeks[weekIdx].startWaist = v;
+      STATE.weeks[weekIdx].waistDayCaptured = v===null ? null : dayIdx;
+      saveState();
+      showToast(v===null ? 'Cleared' : 'Saved');
+      renderAll();
+    };
+    waistInput.addEventListener('change', e=>{
+      const v = e.target.value==='' ? null : parseFloat(e.target.value);
+      commitWaist((v===null || isNaN(v)) ? null : v);
+    });
+    document.getElementById('waistMinusBtn').addEventListener('click', ()=>{
+      const typed = parseFloat(waistInput.value);
+      const base = isNaN(typed) ? (lastWaist ?? 0) : typed;
+      commitWaist(Math.round((base-0.5)*10)/10);
+    });
+    document.getElementById('waistPlusBtn').addEventListener('click', ()=>{
+      const typed = parseFloat(waistInput.value);
+      const base = isNaN(typed) ? (lastWaist ?? 0) : typed;
+      commitWaist(Math.round((base+0.5)*10)/10);
+    });
+  }
 
   const grid = document.getElementById('todayGrid');
   grid.innerHTML = CATEGORIES.map(cat=>todayCardHTML(cat, weekIdx, dayIdx)).join('');
