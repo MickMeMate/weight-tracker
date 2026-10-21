@@ -1411,6 +1411,11 @@ function renderToday(){
      this field simply falls through to the startWaist check below. */
   const needsWaist = week.startWaist === null || week.waistDayCaptured === dayIdx;
   const lastWaist = needsWaist ? lastKnownWaist(weekIdx) : null;
+  /* If this week already has a value (captured earlier today), show that —
+     the exact figure already sitting in the This Week tab's own field —
+     rather than last week's figure, so it stays visible and editable for
+     the rest of the day instead of appearing to revert on reload. */
+  const displayWaist = needsWaist ? (typeof week.startWaist==='number' ? week.startWaist : lastWaist) : null;
 
   el.innerHTML = `
     <div class="today-header">
@@ -1436,10 +1441,14 @@ function renderToday(){
       <div class="sub">Captured once per week. Stays here until you enter it, remains for the rest of that day, then disappears from the day after — it fills in the same field shown on This Week.</div>
       <div class="today-value-row">
         <button class="stepper" id="waistMinusBtn" aria-label="Decrease waist">&minus;</button>
-        <input type="number" step="0.5" inputmode="decimal" class="weight-input" id="todayWaistInput" placeholder="cm" value="${lastWaist ?? ''}">
+        <input type="number" step="1" inputmode="numeric" class="weight-input" id="todayWaistInput" placeholder="cm" value="${displayWaist!==null ? Math.round(displayWaist) : ''}">
         <button class="stepper" id="waistPlusBtn" aria-label="Increase waist">+</button>
       </div>
-      <div class="today-sub">${lastWaist!==null ? `Last recorded: ${trimNum(lastWaist)}cm` : 'No previous waist measurement on record yet'}</div>
+      <div class="today-sub">${
+        typeof week.startWaist==='number' ? `Captured today: ${trimNum(week.startWaist)}cm — editable until midnight`
+        : lastWaist!==null ? `Last recorded: ${trimNum(lastWaist)}cm`
+        : 'No previous waist measurement on record yet'
+      }</div>
     </section>` : ''}
 
     <div class="today-grid" id="todayGrid"></div>
@@ -1471,17 +1480,17 @@ function renderToday(){
     };
     waistInput.addEventListener('change', e=>{
       const v = e.target.value==='' ? null : parseFloat(e.target.value);
-      commitWaist((v===null || isNaN(v)) ? null : v);
+      commitWaist((v===null || isNaN(v)) ? null : Math.round(v));
     });
     document.getElementById('waistMinusBtn').addEventListener('click', ()=>{
       const typed = parseFloat(waistInput.value);
       const base = isNaN(typed) ? (lastWaist ?? 0) : typed;
-      commitWaist(Math.round((base-0.5)*10)/10);
+      commitWaist(Math.round(base-1));
     });
     document.getElementById('waistPlusBtn').addEventListener('click', ()=>{
       const typed = parseFloat(waistInput.value);
       const base = isNaN(typed) ? (lastWaist ?? 0) : typed;
-      commitWaist(Math.round((base+0.5)*10)/10);
+      commitWaist(Math.round(base+1));
     });
   }
 
