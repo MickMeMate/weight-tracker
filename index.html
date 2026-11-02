@@ -1167,6 +1167,28 @@ function renderDash(){
   const curWaistPct = hasWaist ? waistCur.waistPct : null;
   const waistAchievedPct = hasWaist ? (startWaistPct - curWaistPct) / (startWaistPct - WAIST_HEIGHT_GOAL_PCT) : null;
 
+  /* Average pace so far (actual change ÷ weeks elapsed) vs the aspirational
+     rate from Settings. Needs at least two distinct logged weeks — with
+     only one, there's no elapsed time to average over. */
+  const weightWeeksElapsed = idx - firstLoggedWeekIndex();
+  const avgWeeklyWeightLoss = weightWeeksElapsed>0 ? (start.weight-cur.weight)/weightWeeksElapsed : null;
+  const waistWeeksElapsed = hasWaist ? waistLastIdx-waistFirstIdx : 0;
+  const avgWeeklyWaistLoss = (hasWaist && waistWeeksElapsed>0) ? (waistStart.waist-waistCur.waist)/waistWeeksElapsed : null;
+
+  /* Weekly-rate figures stay in a single most-relevant unit rather than the
+     stone/pounds combo used for body weight itself — a week's change is
+     almost always under 14lb, so splitting it into stones would just show
+     "0st Xlb" every time, which isn't useful. */
+  function weightRateDisplay(kgPerWeek, unit){
+    return unit==='stlb' ? trimNum(kgPerWeek*2.20462)+'lb' : trimNum(kgPerWeek)+'kg';
+  }
+  function paceStatCells(avgPerWeek, aspirationalPerWeek, rateDisplayFn){
+    const onPace = avgPerWeek!==null && avgPerWeek >= aspirationalPerWeek;
+    return `
+      <div class="stat"><div class="num" style="${avgPerWeek!==null?`color:${onPace?'var(--accent)':'var(--warn)'}`:''}">${avgPerWeek!==null ? rateDisplayFn(avgPerWeek) : '—'}</div><div class="lbl">Avg loss/wk</div></div>
+      <div class="stat"><div class="num">${rateDisplayFn(aspirationalPerWeek)}</div><div class="lbl">Aspirational/wk</div></div>`;
+  }
+
   el.innerHTML = `
     <div class="grid2">
       <section class="block">
@@ -1182,6 +1204,7 @@ function renderDash(){
           <div class="stat"><div class="num accent">${weightNumberDisplay(cur.weight,s.weightUnit)}</div><div class="lbl">Current${weightLabelSuffix(s.weightUnit)}</div></div>
           <div class="stat"><div class="num">${weightNumberDisplay(start.weight,s.weightUnit)}</div><div class="lbl">Start${weightLabelSuffix(s.weightUnit)}</div></div>
           <div class="stat"><div class="num">${weightNumberDisplay(s.goalWeight,s.weightUnit)}</div><div class="lbl">Goal${weightLabelSuffix(s.weightUnit)}</div></div>
+          ${paceStatCells(avgWeeklyWeightLoss, s.aspirationRate, v=>weightRateDisplay(v,s.weightUnit))}
         </div>
         <div class="ruler">
           <div class="labels"><span>Start ${weightInlineDisplay(start.weight,s.weightUnit)}</span><span>Goal ${weightInlineDisplay(s.goalWeight,s.weightUnit)}</span></div>
@@ -1198,6 +1221,7 @@ function renderDash(){
           <div class="stat"><div class="num accent">${curWaistPct.toFixed(1)}%</div><div class="lbl">Current</div></div>
           <div class="stat"><div class="num">${startWaistPct.toFixed(1)}%</div><div class="lbl">Start</div></div>
           <div class="stat"><div class="num">${WAIST_HEIGHT_GOAL_PCT}%</div><div class="lbl">Goal</div></div>
+          ${paceStatCells(avgWeeklyWaistLoss, s.aspirationRateWaist, v=>trimNum(v)+'cm')}
         </div>
         <div class="ruler">
           <div class="labels"><span>Start ${startWaistPct.toFixed(1)}%</span><span>Goal ${WAIST_HEIGHT_GOAL_PCT}%</span></div>
