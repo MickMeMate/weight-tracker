@@ -288,15 +288,38 @@
   .today-sub{font-size:12px; color:var(--ink-soft); text-align:center; margin-top:4px;}
 
   /* ---------- Exercise view ---------- */
-  .exercise-row{display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--line);}
-  .exercise-row:last-child{border-bottom:none;}
-  .exercise-desc{flex:1; min-width:0;}
+  .exercise-entry{padding:8px 0; border-bottom:1px solid var(--line);}
+  .exercise-entry:last-child{border-bottom:none;}
+  .exercise-row{display:flex; align-items:center; gap:8px;}
+  .exercise-desc{width:100%;}
   .exercise-mins{width:auto; min-width:100px; flex-shrink:0;}
-  .exercise-remove{
+  .exercise-remove, .sub-exercise-remove{
     background:none; border:1px solid var(--line); color:var(--ink-faint); border-radius:50%;
     width:32px; height:32px; flex-shrink:0; font-size:18px; line-height:1; cursor:pointer;
   }
-  .exercise-remove:hover{border-color:var(--warn); color:var(--warn);}
+  .exercise-remove:hover, .sub-exercise-remove:hover{border-color:var(--warn); color:var(--warn);}
+
+  .autocomplete-wrap{position:relative; flex:1; min-width:0;}
+  .autocomplete-list{
+    display:none; position:absolute; top:100%; left:0; right:0; z-index:20;
+    background:var(--paper); border:1px solid var(--line); border-radius:6px;
+    margin-top:2px; max-height:180px; overflow-y:auto; box-shadow:0 4px 12px rgba(0,0,0,0.15);
+  }
+  .autocomplete-list.show{display:block;}
+  .autocomplete-item{padding:8px 10px; font-size:13px; color:var(--ink); cursor:pointer;}
+  .autocomplete-item:hover{background:var(--accent-pale);}
+
+  .sub-exercise-block{
+    margin:10px 0 2px 20px; padding:10px 0 2px 12px; border-left:2px solid var(--accent-soft);
+  }
+  .sub-exercise-row{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .sub-exercise-row .autocomplete-wrap{flex:2; min-width:0;}
+  .sub-exercise-weight{flex:1; min-width:0; width:auto;}
+  .add-sub-exercise{
+    background:none; border:1px dashed var(--line); color:var(--accent); border-radius:6px;
+    padding:6px 12px; font-size:12.5px; cursor:pointer;
+  }
+  .add-sub-exercise:hover{border-color:var(--accent); background:var(--accent-pale);}
   .exercise-total{
     margin-top:16px; padding-top:14px; border-top:1px solid var(--line);
     font-size:15px; color:var(--ink); text-align:right;
@@ -1600,6 +1623,72 @@ function refreshTodayCard(card, cat, weekIdx, dayIdx){
    lazily created so older saved/imported data without this field still
    loads fine (see exerciseEntriesFor / addDaysISO-style defaulting below).
    ========================================================================= */
+/* Matches the two specific activity names that unlock the sub-exercise
+   breakdown — exact match (trimmed, case-insensitive) rather than a loose
+   substring match, so "Weight Training — upper body" doesn't accidentally
+   also qualify. */
+function isStrengthTraining(description){
+  if(!description) return false;
+  const d = description.trim().toLowerCase();
+  return d==='weight training' || d==='strength training';
+}
+
+/* Autocomplete suggestion pools, built fresh from whatever's already been
+   logged — there's no separate static catalogue, so a brand-new tracker
+   just starts with no suggestions and grows its own history over time. */
+function allExerciseDescriptions(){
+  const set = new Set();
+  STATE.weeks.forEach(w=> w.days.forEach(d=> (d.exercise||[]).forEach(e=>{
+    if(e.description && e.description.trim()) set.add(e.description.trim());
+  })));
+  return Array.from(set).sort((a,b)=>a.localeCompare(b));
+}
+function allSubExerciseNames(){
+  const set = new Set();
+  STATE.weeks.forEach(w=> w.days.forEach(d=> (d.exercise||[]).forEach(e=> (e.subExercises||[]).forEach(s=>{
+    if(s.name && s.name.trim()) set.add(s.name.trim());
+  }))));
+  return Array.from(set).sort((a,b)=>a.localeCompare(b));
+}
+function escapeAttr(str){ return (str||'').replace(/"/g,'&quot;'); }
+
+/* Generic autocomplete wiring, reused for both the main activity field and
+   each sub-exercise name field: shows a filtered dropdown of suggestions as
+   you type (or the top few on focus with nothing typed yet), lets you pick
+   one or just keep typing anything new, and only commits to STATE on blur,
+   Enter, or a selection — never on every keystroke, so a re-render never
+   steals focus out from under an in-progress edit. */
+function wireAutocomplete(inputEl, listEl, suggestions, onCommit){
+  function showList(){
+    const q = inputEl.value.trim().toLowerCase();
+    const matches = (q
+      ? suggestions.filter(s=> s.toLowerCase().includes(q) && s.toLowerCase()!==q)
+      : suggestions
+    ).slice(0,8);
+    if(!matches.length){ listEl.innerHTML=''; listEl.classList.remove('show'); return; }
+    listEl.innerHTML = matches.map(s=>`<div class="autocomplete-item">${s}</div>`).join('');
+    listEl.classList.add('show');
+    listEl.querySelectorAll('.autocomplete-item').forEach(item=>{
+      item.addEventListener('mousedown', e=>{
+        e.preventDefault(); /* keeps the input from blurring before this click registers */
+        inputEl.value = item.textContent;
+        listEl.classList.remove('show');
+        onCommit(inputEl.value);
+      });
+    });
+  }
+  inputEl.addEventListener('focus', showList);
+  inputEl.addEventListener('input', showList);
+  inputEl.addEventListener('blur', ()=>{
+    setTimeout(()=>{ listEl.classList.remove('show'); }, 120);
+    onCommit(inputEl.value);
+  });
+  inputEl.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ listEl.classList.remove('show'); inputEl.blur(); }
+    if(e.key==='Escape'){ listEl.classList.remove('show'); }
+  });
+}
+
 function exerciseEntriesFor(weekIdx, dayIdx){
   return STATE.weeks[weekIdx].days[dayIdx].exercise || [];
 }
@@ -1662,7 +1751,7 @@ function renderExercise(){
   document.getElementById('addExerciseBtn').addEventListener('click', ()=>{
     const day = STATE.weeks[weekIdx].days[dayIdx];
     if(!day.exercise) day.exercise = [];
-    day.exercise.push({ description:'', minutes:15 });
+    day.exercise.push({ description:'', minutes:15, subExercises:[] });
     saveState();
     renderExerciseList(weekIdx, dayIdx);
     updateExerciseTotal(weekIdx, dayIdx);
@@ -1691,23 +1780,52 @@ function renderExerciseList(weekIdx, dayIdx){
     return;
   }
 
-  list.innerHTML = entries.map((entry,i)=>`
-    <div class="exercise-row" data-idx="${i}">
-      <input type="text" class="exercise-desc" data-idx="${i}" placeholder="e.g. Walking" value="${(entry.description||'').replace(/"/g,'&quot;')}">
-      <select class="exercise-mins" data-idx="${i}">
-        ${EXERCISE_MINUTE_OPTIONS.map(m=>`<option value="${m}" ${entry.minutes===m?'selected':''}>${formatMinutes(m)}</option>`).join('')}
-      </select>
-      <button class="exercise-remove" data-idx="${i}" aria-label="Remove">&times;</button>
-    </div>
-  `).join('');
+  const descSuggestions = allExerciseDescriptions();
+  const subSuggestions = allSubExerciseNames();
+
+  list.innerHTML = entries.map((entry,i)=>{
+    const strength = isStrengthTraining(entry.description);
+    const subs = entry.subExercises || [];
+    return `
+    <div class="exercise-entry" data-idx="${i}">
+      <div class="exercise-row">
+        <div class="autocomplete-wrap">
+          <input type="text" class="exercise-desc" data-idx="${i}" placeholder="e.g. Walking" value="${escapeAttr(entry.description)}" autocomplete="off">
+          <div class="autocomplete-list" data-idx="${i}" data-kind="main"></div>
+        </div>
+        <select class="exercise-mins" data-idx="${i}">
+          ${EXERCISE_MINUTE_OPTIONS.map(m=>`<option value="${m}" ${entry.minutes===m?'selected':''}>${formatMinutes(m)}</option>`).join('')}
+        </select>
+        <button class="exercise-remove" data-idx="${i}" aria-label="Remove">&times;</button>
+      </div>
+      ${strength ? `
+      <div class="sub-exercise-block" data-idx="${i}">
+        ${subs.map((sub,j)=>`
+          <div class="sub-exercise-row" data-idx="${i}" data-subidx="${j}">
+            <div class="autocomplete-wrap">
+              <input type="text" class="sub-exercise-name" data-idx="${i}" data-subidx="${j}" placeholder="e.g. Bench press" value="${escapeAttr(sub.name)}" autocomplete="off">
+              <div class="autocomplete-list" data-idx="${i}" data-subidx="${j}" data-kind="sub"></div>
+            </div>
+            <input type="text" class="sub-exercise-weight" data-idx="${i}" data-subidx="${j}" placeholder="Weight" value="${escapeAttr(sub.weight)}">
+            <button class="sub-exercise-remove" data-idx="${i}" data-subidx="${j}" aria-label="Remove exercise">&times;</button>
+          </div>
+        `).join('')}
+        <button class="add-sub-exercise" data-idx="${i}" type="button">+ Add exercise</button>
+      </div>` : ''}
+    </div>`;
+  }).join('');
 
   list.querySelectorAll('.exercise-desc').forEach(inp=>{
-    inp.addEventListener('change', ()=>{
-      const i = +inp.dataset.idx;
-      STATE.weeks[weekIdx].days[dayIdx].exercise[i].description = inp.value;
+    const i = +inp.dataset.idx;
+    const listEl = list.querySelector(`.autocomplete-list[data-idx="${i}"][data-kind="main"]`);
+    wireAutocomplete(inp, listEl, descSuggestions, val=>{
+      STATE.weeks[weekIdx].days[dayIdx].exercise[i].description = val;
       saveState();
+      renderExerciseList(weekIdx, dayIdx); /* re-render so the sub-exercise block appears/disappears as needed */
+      updateExerciseTotal(weekIdx, dayIdx);
     });
   });
+
   list.querySelectorAll('.exercise-mins').forEach(sel=>{
     sel.addEventListener('change', ()=>{
       const i = +sel.dataset.idx;
@@ -1716,6 +1834,7 @@ function renderExerciseList(weekIdx, dayIdx){
       updateExerciseTotal(weekIdx, dayIdx);
     });
   });
+
   list.querySelectorAll('.exercise-remove').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const i = +btn.dataset.idx;
@@ -1723,6 +1842,43 @@ function renderExerciseList(weekIdx, dayIdx){
       saveState();
       renderExerciseList(weekIdx, dayIdx);
       updateExerciseTotal(weekIdx, dayIdx);
+    });
+  });
+
+  list.querySelectorAll('.add-sub-exercise').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const i = +btn.dataset.idx;
+      const entry = STATE.weeks[weekIdx].days[dayIdx].exercise[i];
+      if(!entry.subExercises) entry.subExercises = [];
+      entry.subExercises.push({ name:'', weight:'' });
+      saveState();
+      renderExerciseList(weekIdx, dayIdx);
+    });
+  });
+
+  list.querySelectorAll('.sub-exercise-name').forEach(inp=>{
+    const i = +inp.dataset.idx, j = +inp.dataset.subidx;
+    const listEl = list.querySelector(`.autocomplete-list[data-idx="${i}"][data-subidx="${j}"][data-kind="sub"]`);
+    wireAutocomplete(inp, listEl, subSuggestions, val=>{
+      STATE.weeks[weekIdx].days[dayIdx].exercise[i].subExercises[j].name = val;
+      saveState();
+    });
+  });
+
+  list.querySelectorAll('.sub-exercise-weight').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const i = +inp.dataset.idx, j = +inp.dataset.subidx;
+      STATE.weeks[weekIdx].days[dayIdx].exercise[i].subExercises[j].weight = inp.value;
+      saveState();
+    });
+  });
+
+  list.querySelectorAll('.sub-exercise-remove').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const i = +btn.dataset.idx, j = +btn.dataset.subidx;
+      STATE.weeks[weekIdx].days[dayIdx].exercise[i].subExercises.splice(j,1);
+      saveState();
+      renderExerciseList(weekIdx, dayIdx);
     });
   });
 }
