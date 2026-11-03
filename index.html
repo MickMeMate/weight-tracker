@@ -194,6 +194,9 @@
   /* ---------- Today view ---------- */
   .today-header{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;}
 
+  .exercise-split-bar{display:flex; height:14px; border-radius:7px; overflow:hidden; background:var(--line); margin:14px 0 10px;}
+  .exercise-split-bar > div{height:100%;}
+
   .unit-toggle{display:inline-flex; border:1px solid var(--line); border-radius:20px; overflow:hidden; flex-shrink:0;}
   .unit-btn{
     background:var(--paper); border:none; padding:5px 14px; font-size:12px; font-weight:600;
@@ -665,6 +668,18 @@ function averageOf(arr){
 /* Call after writing today's daily weight into STATE. priorCount is the
    number of daily weights that existed in this week BEFORE today's write.
    Returns a message to toast if an auto-set happened, else null. */
+/* Maps last week's total exercise time to an activity level. Thresholds are
+   cumulative tiers (">= " on each boundary) so a value landing exactly on a
+   boundary — e.g. exactly 45 minutes — resolves to the tier above rather
+   than falling into a gap between "less than" and "more than". */
+function activityFromExerciseMinutes(totalMinutes){
+  if(totalMinutes >= 1800) return 'Extremely Active';   /* more than 30 hours */
+  if(totalMinutes >= 540)  return 'Very Active';         /* more than 9 hours */
+  if(totalMinutes >= 300)  return 'Moderately Active';   /* more than 5 hours */
+  if(totalMinutes >= 45)   return 'Lightly Active';      /* more than 45 minutes */
+  return 'Sedentary';                                    /* less than 45 minutes */
+}
+
 function maybeAutoSetWeeklyWeight(weekIdx, priorCount){
   if(priorCount !== 0) return null;               /* not the first entry this week */
   if(weekIdx <= 0) return null;                    /* no previous week to average */
@@ -673,7 +688,15 @@ function maybeAutoSetWeeklyWeight(weekIdx, priorCount){
   if(prevAvg === null) return null;                 /* previous week has no daily entries */
   const rounded = Math.round(prevAvg*10)/10;
   STATE.weeks[weekIdx].startWeight = rounded;
-  return `Week ${weekIdx+1} weight auto-set to ${rounded}kg (last week's daily average)`;
+
+  let activityMsg = '';
+  if(!STATE.weeks[weekIdx].activity){ /* don't override a level already chosen by hand */
+    const prevExerciseMinutes = weekExerciseTotalMinutes(weekIdx-1);
+    const level = activityFromExerciseMinutes(prevExerciseMinutes);
+    STATE.weeks[weekIdx].activity = level;
+    activityMsg = ` · Activity set to ${level} (last week: ${formatMinutes(prevExerciseMinutes)} exercise)`;
+  }
+  return `Week ${weekIdx+1} weight auto-set to ${rounded}kg (last week's daily average)${activityMsg}`;
 }
 
 /* Shared daily-weight commit logic — used by both the Today tab's weight
@@ -1278,6 +1301,18 @@ function renderDash(){
       ${cur.energy===null? `<div class="sub" style="margin:8px 0 0;">Set an activity level for this week (in This Week) to calculate energy output and deficit.</div>` : ''}
     </section>
 
+    <section class="block">
+      <div class="today-header" style="margin-bottom:4px;">
+        <h2>Exercise</h2>
+        <div class="unit-toggle" id="exerciseScopeToggle">
+          <button class="unit-btn ${(STATE._exerciseScope||'total')==='total'?'active':''}" data-scope="total" type="button">Total</button>
+          <button class="unit-btn ${STATE._exerciseScope==='week'?'active':''}" data-scope="week" type="button">This week</button>
+        </div>
+      </div>
+      <div class="sub">Average session length and category split, read from the keywords in each entry's own title</div>
+      <div id="exerciseTileBody"></div>
+    </section>
+
     <div class="grid4">
       <section class="block"><h2>BMI</h2><div class="sub">Current: ${cur.bmi.toFixed(1)}</div><div id="donutBmiWrap" style="display:flex;justify-content:center;"></div></section>
       <section class="block"><h2>Waist-to-height</h2><div class="sub">Current ratio</div>${hasWaist ? `<div id="gaugeWhtrWrap" style="display:flex;justify-content:center;"></div>` : `<p class="empty-note">No waist data yet</p>`}</section>
@@ -1408,12 +1443,57 @@ function renderDash(){
       renderDash();
     });
   });
+  document.getElementById('exerciseScopeToggle').querySelectorAll('.unit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      STATE._exerciseScope = btn.dataset.scope; /* session-only preference, same pattern as the quota-chart category picker — not persisted */
+      renderDash();
+    });
+  });
+  renderExerciseTile();
 
   const sel = document.getElementById('quotaCatSelect');
   sel.innerHTML = CATEGORIES.map(c=>`<option value="${c.key}">${c.label}</option>`).join('');
   sel.value = STATE._lastQuotaCat || 'protein';
   sel.addEventListener('change', ()=>{ STATE._lastQuotaCat = sel.value; renderQuotaChart(sel.value, idx); });
   renderQuotaChart(sel.value, idx);
+}
+
+function renderExerciseTile(){
+  const body = document.getElementById('exerciseTileBody');
+  if(!body) return;
+  const scope = STATE._exerciseScope || 'total';
+  const stats = exerciseStats(scope);
+
+  if(stats.sessionCount===0){
+    body.innerHTML = `<p class="empty-note">No exercise logged ${scope==='week'?'this week':'yet'}.</p>`;
+    return;
+  }
+
+  const colors = {
+    strength: themeVar('accent'),
+    walking:  themeVar('highlight'),
+    cycling:  themeVar('warn'),
+    swimming: themeVar('ink-soft'),
+    other:    themeVar('line')
+  };
+
+  body.innerHTML = `
+    <div class="stat-row">
+      <div class="stat"><div class="num accent">${formatMinutes(Math.round(stats.avgPerSession))}</div><div class="lbl">Avg per session</div></div>
+      <div class="stat"><div class="num">${stats.sessionCount}</div><div class="lbl">Sessions</div></div>
+      <div class="stat"><div class="num">${formatMinutes(stats.totalMinutes)}</div><div class="lbl">Total time</div></div>
+    </div>
+    <div class="exercise-split-bar">
+      ${EXERCISE_CATEGORIES.filter(c=>stats.pct[c.key]>0).map(c=>
+        `<div style="width:${stats.pct[c.key]}%;background:${colors[c.key]}" title="${c.label} ${stats.pct[c.key].toFixed(0)}%"></div>`
+      ).join('')}
+    </div>
+    <div class="legend">
+      ${EXERCISE_CATEGORIES.filter(c=>stats.byCategory[c.key]>0).map(c=>
+        `<span><span class="swatch" style="background:${colors[c.key]}"></span>${c.label} ${stats.pct[c.key].toFixed(0)}%</span>`
+      ).join('')}
+    </div>
+  `;
 }
 
 function renderQuotaChart(catKey, uptoIdx){
@@ -1699,6 +1779,45 @@ function weekExerciseTotalMinutes(weekIdx){
   let total = 0;
   for(let d=0; d<7; d++) total += exerciseTotalMinutes(weekIdx, d);
   return total;
+}
+
+/* Buckets an exercise entry by keyword-matching its own title — there's no
+   separate category field, so this is read straight off whatever the
+   person typed (or picked from autocomplete) as the activity name. */
+const EXERCISE_CATEGORIES = [
+  { key:'strength', label:'Strength/Weight', match:d=> d.includes('weight')||d.includes('strength') },
+  { key:'walking',  label:'Walking',         match:d=> d.includes('walk') },
+  { key:'cycling',  label:'Cycling/RPM',     match:d=> d.includes('cycl')||d.includes('rpm')||d.includes('bike')||d.includes('spin') },
+  { key:'swimming', label:'Swimming',        match:d=> d.includes('swim') },
+  { key:'other',    label:'Other',           match:()=>true }
+];
+function categorizeExercise(description){
+  const d = (description||'').toLowerCase();
+  return EXERCISE_CATEGORIES.find(c=>c.match(d)).key;
+}
+
+/* scope: 'total' across the whole tracker, or 'week' for just today's
+   actual calendar week (not whichever week This Week happens to be
+   showing — "this week" means the real current week). */
+function exerciseStats(scope){
+  const entries = [];
+  if(scope==='week'){
+    const wi = todayLocation().weekIdx;
+    STATE.weeks[wi].days.forEach(d=> entries.push(...(d.exercise||[])));
+  } else {
+    STATE.weeks.forEach(w=> w.days.forEach(d=> entries.push(...(d.exercise||[]))));
+  }
+  const totalMinutes = entries.reduce((sum,e)=> sum+(typeof e.minutes==='number'?e.minutes:0), 0);
+  const sessionCount = entries.length;
+  const avgPerSession = sessionCount>0 ? totalMinutes/sessionCount : null;
+  const byCategory = {};
+  EXERCISE_CATEGORIES.forEach(c=> byCategory[c.key]=0);
+  entries.forEach(e=>{
+    byCategory[categorizeExercise(e.description)] += (typeof e.minutes==='number'?e.minutes:0);
+  });
+  const pct = {};
+  EXERCISE_CATEGORIES.forEach(c=> pct[c.key] = totalMinutes>0 ? (byCategory[c.key]/totalMinutes*100) : 0);
+  return { totalMinutes, sessionCount, avgPerSession, byCategory, pct };
 }
 function formatMinutes(mins){
   if(mins < 60) return mins+' min';
