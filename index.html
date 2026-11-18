@@ -271,6 +271,20 @@
   .today-card.status-target .stepper{ border-color:var(--accent); color:var(--paper); background:var(--accent); }
   .today-card.status-over .stepper{ border-color:var(--warn); color:var(--warn); background:var(--paper); }
 
+  /* Dashboard tile reordering (Edit layout mode) */
+  .dash-toolbar{display:flex; justify-content:flex-end; margin-bottom:10px;}
+  .dash-tile-wrap.edit-mode{outline:2px dashed var(--line); outline-offset:6px; border-radius:14px; padding:2px 0 12px; margin-bottom:4px;}
+  .dash-tile-move{display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:0 2px 8px;}
+  .dash-tile-label{font-size:12.5px; color:var(--ink-soft); margin-right:auto;}
+  .order-btn{
+    width:30px; height:30px; border-radius:50%; border:1.5px solid var(--line); background:var(--paper);
+    font-size:14px; line-height:1; color:var(--ink-soft); cursor:pointer; flex-shrink:0;
+    -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  }
+  .order-btn:hover{filter:brightness(0.96);}
+  .order-btn:active{transform:scale(0.94);}
+  .order-btn:disabled{opacity:0.3; cursor:not-allowed;}
+
   .slider-wrap{height:14px; border-radius:7px; position:relative; margin-bottom:4px;}
   input[type=range].today-slider{
     -webkit-appearance:none; appearance:none; width:100%; height:14px; margin:0; background:transparent;
@@ -461,6 +475,37 @@ const BMI_UNDER = 18.5, BMI_NORMAL = 24.9, BMI_OVER = 29.9, BMI_OBESE = 35;
 const WHTR_LOW = 0.4, WHTR_HEALTHY_MAX = 0.5, WHTR_ELEVATED_MAX = 0.6;
 const WHTR_ZONE_LABELS = ['Too slender','Healthy range','Elevated risk','Higher risk'];
 
+/* Reorderable dashboard sections. Each id maps to one self-contained chunk
+   of renderDash()'s markup; this array is both the catalogue of valid ids
+   (used to validate/repair STATE.settings.dashOrder) and the default order
+   for a brand-new tracker. Paired visuals (weight+waist, the four goal
+   gauges) move as a single unit rather than individually, since splitting
+   those would break their side-by-side layout. */
+const DASHBOARD_TILES = [
+  { id:'topRow',      label:'Weight & waistline' },
+  { id:'energy',      label:'Energy' },
+  { id:'exercise',    label:'Exercise' },
+  { id:'gauges',      label:'Goal gauges (BMI, waist-to-height, weight goal, waist goal)' },
+  { id:'chartWeight', label:'Weight loss progress chart' },
+  { id:'chartWaist',  label:'Shorts fit again (waistline) chart' },
+  { id:'chartWhtr',   label:'Waist-to-height ratio chart' },
+  { id:'chartBmi',    label:'BMI over time chart' },
+  { id:'chartDelta',  label:'Weekly change chart' },
+  { id:'chartQuota',  label:'Daily quota tracking chart' }
+];
+const DASHBOARD_TILE_IDS = DASHBOARD_TILES.map(t=>t.id);
+/* Repairs a saved dashOrder against the current tile catalogue: drops any
+   id that no longer exists (an older export, or a tile removed in a later
+   version), and appends any id missing from the saved order (a tile added
+   after that backup was made) at the default position relative to the
+   other tiles still missing — so a new tile shows up rather than silently
+   never rendering just because it's absent from an old save. */
+function sanitizeDashOrder(order){
+  const cleaned = Array.isArray(order) ? order.filter(id=>DASHBOARD_TILE_IDS.includes(id)) : [];
+  DASHBOARD_TILE_IDS.forEach(id=>{ if(!cleaned.includes(id)) cleaned.push(id); });
+  return cleaned;
+}
+
 /* =========================================================================
    COLOUR THEMES
    ========================================================================= */
@@ -570,6 +615,7 @@ function buildDefaultState(){
     settings:{
       height:176, age:50, sex:'male', goalWeight:80, goalWaist:90, aspirationRate:0.2, aspirationRateWaist:0.3, theme:'meadow',
       quotaLevel:8000, energyUnit:'kj', weightUnit:'kg', font:'system',
+      dashOrder:DASHBOARD_TILE_IDS.slice(),
       quotas:Object.fromEntries(CATEGORIES.map(c=>[c.key,c.quota]))
     },
     weeks
@@ -587,6 +633,7 @@ function backfillSettings(settings){
   if(!settings.energyUnit) settings.energyUnit='kj';
   if(!settings.weightUnit) settings.weightUnit='kg';
   if(!settings.font) settings.font='system';
+  settings.dashOrder = sanitizeDashOrder(settings.dashOrder);
   return settings;
 }
 
@@ -1235,7 +1282,13 @@ function renderDash(){
       <div class="stat"><div class="num">${rateDisplayFn(aspirationalPerWeek)}</div><div class="lbl">Aspirational/wk</div></div>`;
   }
 
-  el.innerHTML = `
+  /* Each dashboard section's markup lives in this lookup rather than one
+     long template, so the sections can be assembled in whatever order the
+     person has chosen (settings.dashOrder) instead of a single fixed order.
+     Paired visuals (weight+waist, the four goal gauges) stay as one entry
+     each — splitting those would break their side-by-side grid layout. */
+  const tiles = {
+    topRow: `
     <div class="grid2">
       <section class="block">
         <div class="today-header" style="margin-bottom:4px;">
@@ -1276,8 +1329,9 @@ function renderDash(){
           <div class="secondary">In centimetres: ${waistCur.waist.toFixed(0)}cm now, started at ${waistStart.waist.toFixed(0)}cm, goal set at ${s.goalWaist.toFixed(0)}cm</div>
         </div>` : `<p class="empty-note">No waist measurement recorded yet — add this week's waist on This Week.</p>`}
       </section>
-    </div>
+    </div>`,
 
+    energy: `
     <section class="block">
       <div class="today-header" style="margin-bottom:4px;">
         <h2>Energy</h2>
@@ -1299,8 +1353,9 @@ function renderDash(){
         </div>
       </div>
       ${cur.energy===null? `<div class="sub" style="margin:8px 0 0;">Set an activity level for this week (in This Week) to calculate energy output and deficit.</div>` : ''}
-    </section>
+    </section>`,
 
+    exercise: `
     <section class="block">
       <div class="today-header" style="margin-bottom:4px;">
         <h2>Exercise</h2>
@@ -1311,29 +1366,33 @@ function renderDash(){
       </div>
       <div class="sub">Average session length and category split, read from the keywords in each entry's own title</div>
       <div id="exerciseTileBody"></div>
-    </section>
+    </section>`,
 
+    gauges: `
     <div class="grid4">
       <section class="block"><h2>BMI</h2><div class="sub">Current: ${cur.bmi.toFixed(1)}</div><div id="donutBmiWrap" style="display:flex;justify-content:center;"></div></section>
       <section class="block"><h2>Waist-to-height</h2><div class="sub">Current ratio</div>${hasWaist ? `<div id="gaugeWhtrWrap" style="display:flex;justify-content:center;"></div>` : `<p class="empty-note">No waist data yet</p>`}</section>
       <section class="block"><h2>Weight goal progress</h2><div class="sub">Achieved vs remaining</div><div id="donutWeightWrap" style="display:flex;justify-content:center;"></div></section>
       <section class="block"><h2>Waist goal progress</h2><div class="sub">Achieved vs remaining (vs the 50% target)</div>${hasWaist ? `<div id="donutWaistWrap" style="display:flex;justify-content:center;"></div>` : `<p class="empty-note">No waist data yet</p>`}</section>
-    </div>
+    </div>`,
 
+    chartWeight: `
     <section class="block">
       <h2>Weight loss progress</h2>
       <div class="sub">Actual weight vs an aspirational trend line and your goal</div>
       <div id="chartWeight"></div>
       <div class="legend" id="legendWeight"></div>
-    </section>
+    </section>`,
 
+    chartWaist: `
     <section class="block">
       <h2>Shorts fit again — waistline progress</h2>
       <div class="sub">Waist measurement (cm) against your goal</div>
       <div id="chartWaist"></div>
       <div class="legend" id="legendWaist"></div>
-    </section>
+    </section>`,
 
+    chartWhtr: `
     <section class="block">
       <h2>Waist-to-height ratio</h2>
       <div class="sub">Waist as a proportion of height — a more size-independent risk measure than cm alone</div>
@@ -1344,20 +1403,23 @@ function renderDash(){
         <span><span class="swatch" style="background:${themeVar('highlight-soft')}"></span>0.50–0.59 — elevated risk</span>
         <span><span class="swatch" style="background:${themeVar('warn-soft')}"></span>0.60+ — higher risk</span>
       </div>
-    </section>
+    </section>`,
 
+    chartBmi: `
     <section class="block">
       <h2>BMI over time</h2>
       <div class="sub">Shaded bands show underweight / normal / overweight / obese ranges</div>
       <div id="chartBmi"></div>
-    </section>
+    </section>`,
 
+    chartDelta: `
     <section class="block">
       <h2>Weekly change</h2>
       <div class="sub">Kilograms lost (or gained) week to week</div>
       <div id="chartDelta"></div>
-    </section>
+    </section>`,
 
+    chartQuota: `
     <section class="block">
       <h2>Daily quota tracking</h2>
       <div class="sub">
@@ -1365,8 +1427,40 @@ function renderDash(){
         &nbsp;— every logged day so far, against the daily quota
       </div>
       <div id="chartQuota"></div>
-    </section>
-  `;
+    </section>`
+  };
+
+  /* Reorder mechanism: a session-only "edit layout" mode (STATE._dashEditMode,
+     same non-persisted pattern as the exercise scope toggle) shows an up/down
+     arrow pair above each section instead of a drag handle — reliable on
+     touch/PWA without a drag library, and consistent with the arrow-button
+     reordering already used elsewhere for list reordering. The chosen order
+     itself IS persisted, in settings.dashOrder. */
+  const editMode = !!STATE._dashEditMode;
+  const order = sanitizeDashOrder(s.dashOrder);
+  s.dashOrder = order; /* keep STATE in sync with any repair sanitizeDashOrder made */
+
+  const toolbarHtml = `
+    <div class="dash-toolbar">
+      <button class="btn ${editMode?'':'secondary'}" id="dashEditToggle" type="button">${editMode?'Done arranging':'Edit layout'}</button>
+    </div>`;
+
+  const tilesHtml = order.map((id,i)=>{
+    const body = tiles[id];
+    if(!editMode) return body;
+    const label = DASHBOARD_TILES.find(t=>t.id===id).label;
+    return `
+    <div class="dash-tile-wrap edit-mode">
+      <div class="dash-tile-move">
+        <span class="dash-tile-label">${label}</span>
+        <button class="order-btn" data-dir="up" data-id="${id}" type="button" ${i===0?'disabled':''} aria-label="Move ${label} up">&uarr;</button>
+        <button class="order-btn" data-dir="down" data-id="${id}" type="button" ${i===order.length-1?'disabled':''} aria-label="Move ${label} down">&darr;</button>
+      </div>
+      ${body}
+    </div>`;
+  }).join('');
+
+  el.innerHTML = toolbarHtml + tilesHtml;
 
   renderBmiGauge(document.getElementById('donutBmiWrap'), cur.bmi);
   donut(document.getElementById('donutWeightWrap'), {achieved:weightAchievedPct});
@@ -1456,6 +1550,24 @@ function renderDash(){
   sel.value = STATE._lastQuotaCat || 'protein';
   sel.addEventListener('change', ()=>{ STATE._lastQuotaCat = sel.value; renderQuotaChart(sel.value, idx); });
   renderQuotaChart(sel.value, idx);
+
+  document.getElementById('dashEditToggle').addEventListener('click', ()=>{
+    STATE._dashEditMode = !STATE._dashEditMode; /* session-only — mirrors _exerciseScope's non-persisted pattern */
+    renderDash();
+  });
+  if(editMode){
+    el.querySelectorAll('.order-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const arr = STATE.settings.dashOrder;
+        const i = arr.indexOf(btn.dataset.id);
+        const j = btn.dataset.dir==='up' ? i-1 : i+1;
+        if(i<0 || j<0 || j>=arr.length) return;
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+        saveState();
+        renderDash();
+      });
+    });
+  }
 }
 
 function renderExerciseTile(){
