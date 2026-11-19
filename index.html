@@ -51,6 +51,8 @@
   }
   header.top .tagline{color:var(--ink-soft); font-size:12.5px; margin-top:4px;}
   header.top .today{font-size:12.5px; color:var(--ink-faint); text-align:right;}
+  .top-right{display:flex; flex-direction:column; align-items:flex-end; gap:8px;}
+  #dashEditToggle{padding:6px 12px; font-size:12.5px;}
 
   nav.tabs{
     display:flex; gap:2px; margin:16px 0 24px; border-bottom:1px solid var(--line);
@@ -364,7 +366,10 @@
       <h1>Weight &amp; Waist Tracker</h1>
       <div class="tagline">Based on the CSIRO Total Wellbeing Diet method</div>
     </div>
-    <div class="today" id="todayLabel"></div>
+    <div class="top-right">
+      <div class="today" id="todayLabel"></div>
+      <button class="btn secondary" id="dashEditToggle" type="button">Edit layout</button>
+    </div>
   </header>
 
   <nav class="tabs">
@@ -1440,11 +1445,6 @@ function renderDash(){
   const order = sanitizeDashOrder(s.dashOrder);
   s.dashOrder = order; /* keep STATE in sync with any repair sanitizeDashOrder made */
 
-  const toolbarHtml = `
-    <div class="dash-toolbar">
-      <button class="btn ${editMode?'':'secondary'}" id="dashEditToggle" type="button">${editMode?'Done arranging':'Edit layout'}</button>
-    </div>`;
-
   const tilesHtml = order.map((id,i)=>{
     const body = tiles[id];
     if(!editMode) return body;
@@ -1460,7 +1460,7 @@ function renderDash(){
     </div>`;
   }).join('');
 
-  el.innerHTML = toolbarHtml + tilesHtml;
+  el.innerHTML = tilesHtml;
 
   renderBmiGauge(document.getElementById('donutBmiWrap'), cur.bmi);
   donut(document.getElementById('donutWeightWrap'), {achieved:weightAchievedPct});
@@ -1551,10 +1551,7 @@ function renderDash(){
   sel.addEventListener('change', ()=>{ STATE._lastQuotaCat = sel.value; renderQuotaChart(sel.value, idx); });
   renderQuotaChart(sel.value, idx);
 
-  document.getElementById('dashEditToggle').addEventListener('click', ()=>{
-    STATE._dashEditMode = !STATE._dashEditMode; /* session-only — mirrors _exerciseScope's non-persisted pattern */
-    renderDash();
-  });
+  updateEditBtn();
   if(editMode){
     el.querySelectorAll('.order-btn').forEach(btn=>{
       btn.addEventListener('click', ()=>{
@@ -1568,6 +1565,16 @@ function renderDash(){
       });
     });
   }
+}
+
+/* The Edit layout button lives in the page header (not inside the dashboard
+   view), so it's wired once at startup and just relabelled here. */
+function updateEditBtn(){
+  const btn = document.getElementById('dashEditToggle');
+  if(!btn) return;
+  const on = !!STATE._dashEditMode;
+  btn.textContent = on ? 'Done' : 'Edit layout';
+  btn.classList.toggle('secondary', !on);
 }
 
 function renderExerciseTile(){
@@ -2596,6 +2603,7 @@ function setupNav(){
       btn.classList.add('active');
       document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
       document.getElementById('view-'+btn.dataset.view).classList.add('active');
+      document.getElementById('dashEditToggle').style.display = btn.dataset.view==='dash' ? '' : 'none';
       if(btn.dataset.view==='dash') renderDash();
       if(btn.dataset.view==='today') renderToday();
       if(btn.dataset.view==='exercise') renderExercise();
@@ -2618,6 +2626,10 @@ STATE = loadState();
 applyTheme(STATE.settings.theme);
 applyFont(STATE.settings.font);
 document.getElementById('todayLabel').textContent = new Date().toLocaleDateString(undefined,{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+document.getElementById('dashEditToggle').addEventListener('click', ()=>{
+  STATE._dashEditMode = !STATE._dashEditMode; /* session-only, not persisted */
+  renderDash();
+});
 setupNav();
 renderAll();
 </script>
