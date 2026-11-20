@@ -378,6 +378,7 @@
     <button data-view="exercise">Exercise</button>
     <button data-view="week">This Week</button>
     <button data-view="history">Log Book</button>
+    <button data-view="predict">Prediction</button>
     <button data-view="settings">Settings</button>
   </nav>
 
@@ -395,6 +396,9 @@
 
   <!-- ================= HISTORY ================= -->
   <div class="view" id="view-history"></div>
+
+  <!-- ================= PREDICTION ================= -->
+  <div class="view" id="view-predict"></div>
 
   <!-- ================= SETTINGS ================= -->
   <div class="view" id="view-settings"></div>
@@ -623,7 +627,8 @@ function buildDefaultState(){
       dashOrder:DASHBOARD_TILE_IDS.slice(),
       quotas:Object.fromEntries(CATEGORIES.map(c=>[c.key,c.quota]))
     },
-    weeks
+    weeks,
+    predictions:[]
   };
 }
 
@@ -649,6 +654,7 @@ function loadState(){
       const parsed = JSON.parse(raw);
       if(parsed && parsed.weeks && parsed.weeks.length===TOTAL_WEEKS){
         backfillSettings(parsed.settings);
+        if(!Array.isArray(parsed.predictions)) parsed.predictions = [];
         return parsed;
       }
     }
@@ -2496,6 +2502,7 @@ function renderSettings(){
         const parsed = JSON.parse(reader.result);
         if(parsed && parsed.weeks && parsed.settings){
           backfillSettings(parsed.settings);
+          if(!Array.isArray(parsed.predictions)) parsed.predictions = [];
           STATE = parsed;
           applyTheme(STATE.settings.theme);
           applyFont(STATE.settings.font);
@@ -2586,12 +2593,243 @@ function showInfo(title, message){
   overlay.addEventListener('click', e=>{ if(e.target===overlay) close(); });
 }
 
+/* =========================================================================
+   VIEW: PREDICTION
+   Fits every recorded reading (daily weights, weekly weights, weekly waists)
+   to a curve that levels off: value = A + B*exp(-k*days). Three candidate
+   formulas are fitted each time; every saved prediction stores all three
+   outputs, so once real data arrives each formula can be scored against
+   what actually happened and the best-performing one is used from then on.
+   ========================================================================= */
+let predTargetISO = null;
+const PRED_MODELS = [
+  { key:'exp',    label:'Tapering curve (fitted rate)' },
+  { key:'exp12',  label:'Tapering curve (12-week half-life)' },
+  { key:'linear', label:'Straight line' }
+];
+
+function predSeries(metric){
+  const pts = [];
+  STATE.weeks.forEach(w=>{
+    if(metric==='weight'){
+      w.days.forEach((d,i)=>{
+        if(typeof d.weight==='number') pts.push({date:addDaysISO(w.startDate,i), v:d.weight});
+        else if(i===0 && typeof w.startWeight==='number') pts.push({date:w.startDate, v:w.startWeight});
+      });
+    } else if(typeof w.startWaist==='number'){
+      const off = typeof w.waistDayCaptured==='number' ? w.waistDayCaptured : 0;
+      pts.push({date:addDaysISO(w.startDate,off), v:w.startWaist});
+    }
+  });
+  return pts;
+}
+
+function predActual(series, iso, tol){
+  let best = null, bd = 1e9;
+  series.forEach(p=>{
+    const d = Math.abs(daysBetweenISO(p.date, iso));
+    if(d<=tol && d<bd){ bd = d; best = p.v; }
+  });
+  return best;
+}
+
+function fitModels(pts){
+  if(pts.length<3) return null;
+  const d0 = pts[0].date;
+  const t = pts.map(p=>daysBetweenISO(d0,p.date));
+  const y = pts.map(p=>p.v);
+  const n = y.length, last = y[n-1];
+  const lo = last*0.6, hi = last*1.4; /* keeps the levelling-off point plausible */
+  const mean = a=>a.reduce((s,v)=>s+v,0)/a.length;
+  const fin = m=>{ if(m) m.rmse = Math.sqrt(m.sse/Math.max(1,n-2)); return m; };
+  function reg(x){ /* least squares: y = a + b*x */
+    const mx = mean(x), my = mean(y);
+    let sxx = 0, sxy = 0;
+    for(let i=0;i<n;i++){ sxx += (x[i]-mx)**2; sxy += (x[i]-mx)*(y[i]-my); }
+    if(sxx<1e-12) return null;
+    const b = sxy/sxx, a = my-b*mx;
+    let sse = 0;
+    for(let i=0;i<n;i++) sse += (y[i]-(a+b*x[i]))**2;
+    return {a,b,sse};
+  }
+  function expFor(halfLifeDays){
+    const k = Math.LN2/halfLifeDays;
+    const r = reg(t.map(v=>Math.exp(-k*v)));
+    if(!r || r.a<lo || r.a>hi) return null;
+    return fin({kind:'exp', k, a:r.a, b:r.b, sse:r.sse, f:tt=>r.a+r.b*Math.exp(-k*tt)});
+  }
+  let best = null;
+  if(n>=8 && t[n-1]>=21){ /* enough history to fit the rate itself */
+    for(let i=0;i<=150;i++){
+      const m = expFor(14*Math.pow(730/14, i/150));
+      if(m && (!best || m.sse<best.sse)) best = m;
+    }
+  }
+  const fixed = expFor(84);
+  const lin = reg(t);
+  const linM = lin ? fin({kind:'linear', sse:lin.sse, f:tt=>Math.max(lo, lin.a+lin.b*tt)}) : null;
+  return { d0, n, models:{ exp:best||fixed, exp12:fixed, linear:linM } };
+}
+
+function scorePredictions(){
+  const today = localISODate(new Date());
+  const series = { weight:predSeries('weight'), waist:predSeries('waist') };
+  const tol = { weight:3, waist:4 };
+  const err = { weight:{}, waist:{} }, count = { weight:0, waist:0 };
+  const rows = [];
+  (STATE.predictions||[]).forEach(p=>{
+    const row = { p, actual:{weight:null, waist:null} };
+    ['weight','waist'].forEach(m=>{
+      if(!p[m] || p.target>today) return;
+      const a = predActual(series[m], p.target, tol[m]);
+      if(a===null) return;
+      row.actual[m] = a; count[m]++;
+      PRED_MODELS.forEach(mm=>{
+        const v = p[m][mm.key];
+        if(v===null || v===undefined) return;
+        (err[m][mm.key] = err[m][mm.key] || []).push(Math.abs(a-v));
+      });
+    });
+    rows.push(row);
+  });
+  const mae = { weight:{}, waist:{} };
+  ['weight','waist'].forEach(m=>PRED_MODELS.forEach(mm=>{
+    const e = err[m][mm.key];
+    mae[m][mm.key] = (e && e.length) ? e.reduce((a,b)=>a+b,0)/e.length : null;
+  }));
+  return { rows, mae, count };
+}
+
+/* Needs 3+ predictions already checked against real readings before it
+   will move off the default; then the lowest average error wins. */
+function chooseModel(metric, sc){
+  if(sc.count[metric]<3) return 'exp';
+  let best = 'exp', b = Infinity;
+  PRED_MODELS.forEach(m=>{
+    const v = sc.mae[metric][m.key];
+    if(v!==null && v<b){ b = v; best = m.key; }
+  });
+  return best;
+}
+
+function makeForecast(metric, iso, sc){
+  const fit = fitModels(predSeries(metric));
+  if(!fit) return null;
+  const tt = daysBetweenISO(fit.d0, iso);
+  const vals = {};
+  PRED_MODELS.forEach(m=>{
+    const mod = fit.models[m.key];
+    vals[m.key] = mod ? Math.round(mod.f(tt)*10)/10 : null;
+  });
+  const used = [chooseModel(metric, sc), 'exp', 'exp12', 'linear'].find(k=>vals[k]!==null);
+  if(!used) return null;
+  const model = fit.models[used];
+  const horizon = Math.max(0, daysBetweenISO(localISODate(new Date()), iso));
+  return { vals, used, value:vals[used], model, n:fit.n, spread:model.rmse*(1+horizon/120) };
+}
+
+function logPrediction(){
+  const today = localISODate(new Date());
+  if(predTargetISO<=today){ showToast('Pick a future date to save a prediction'); return; }
+  const sc = scorePredictions();
+  const rec = { madeOn:today, target:predTargetISO };
+  ['weight','waist'].forEach(m=>{
+    const f = makeForecast(m, predTargetISO, sc);
+    rec[m] = f ? Object.assign({}, f.vals, {used:f.used}) : null;
+  });
+  if(!rec.weight && !rec.waist){ showToast('Not enough data to predict yet'); return; }
+  STATE.predictions = (STATE.predictions||[]).filter(p=>!(p.madeOn===rec.madeOn && p.target===rec.target));
+  STATE.predictions.push(rec);
+  saveState();
+  showToast('Prediction saved');
+}
+
+function predCard(title, unit, f, last){
+  if(!f) return `<section class='block'><h2>${title}</h2><p class='empty-note'>Needs at least 3 recorded readings to predict.</p></section>`;
+  const label = PRED_MODELS.find(m=>m.key===f.used).label;
+  const diff = last!==null ? f.value-last : null;
+  const extra = f.model.kind==='exp'
+    ? `Levelling off near ${f.model.a.toFixed(1)}${unit} · half-life ${(Math.LN2/f.model.k/7).toFixed(0)} weeks` : '';
+  return `<section class='block'>
+    <h2>${title}</h2>
+    <div class='sub'>${label} · ${f.n} readings</div>
+    <div class='stat-row'>
+      <div class='stat'><div class='num accent'>${f.value.toFixed(1)}${unit}</div><div class='lbl'>Predicted</div></div>
+      <div class='stat'><div class='num'>±${f.spread.toFixed(1)}</div><div class='lbl'>Likely range</div></div>
+      ${diff!==null ? `<div class='stat'><div class='num'>${diff>=0?'+':'−'}${Math.abs(diff).toFixed(1)}</div><div class='lbl'>vs latest</div></div>` : ''}
+    </div>
+    ${extra ? `<div class='sub' style='margin:12px 0 0;'>${extra}</div>` : ''}
+  </section>`;
+}
+
+function renderPredict(){
+  const el = document.getElementById('view-predict');
+  const today = localISODate(new Date());
+  if(!predTargetISO) predTargetISO = addDaysISO(today, 28);
+  if(!STATE.predictions) STATE.predictions = [];
+  const sc = scorePredictions();
+  const fw = makeForecast('weight', predTargetISO, sc);
+  const fa = makeForecast('waist', predTargetISO, sc);
+  const lastOf = m=>{ const s = predSeries(m); return s.length ? s[s.length-1].v : null; };
+  const using = m=> sc.count[m]>=3 ? PRED_MODELS.find(x=>x.key===chooseModel(m,sc)).label : 'default until 3 predictions can be checked against real readings';
+  const maeRow = (m,name)=>`<tr><td>${name}</td><td>${sc.count[m]}</td>${PRED_MODELS.map(mm=>{ const v = sc.mae[m][mm.key]; return `<td>${v===null?'—':v.toFixed(2)}</td>`; }).join('')}</tr>`;
+  const cells = (row,m)=>{
+    const pv = row.p[m] ? row.p[m][row.p[m].used] : null;
+    const a = row.actual[m];
+    const status = a!==null ? a.toFixed(1) : (row.p.target>today ? 'pending' : '—');
+    const e = (a===null || pv===null) ? '—' : ((a-pv>=0?'+':'−')+Math.abs(a-pv).toFixed(1));
+    return `<td>${pv===null?'—':pv.toFixed(1)}</td><td>${status}</td><td>${e}</td>`;
+  };
+  const hist = sc.rows.slice().sort((a,b)=>a.p.target<b.p.target?1:-1).slice(0,20);
+
+  el.innerHTML = `
+    <section class='block'>
+      <h2>Predict a date</h2>
+      <div class='sub'>Uses every weight and waist reading recorded so far. Each date you pick is saved so it can be checked against real results later.</div>
+      <div style='display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;'>
+        <div style='width:200px;'><label class='field'>Target date</label><input type='date' id='predDate' value='${predTargetISO}' min='${addDaysISO(today,1)}'></div>
+        <button class='btn' id='predBtn' type='button'>Predict &amp; save</button>
+      </div>
+    </section>
+    <div class='grid2'>
+      ${predCard('Weight','kg',fw,lastOf('weight'))}
+      ${predCard('Waist','cm',fa,lastOf('waist'))}
+    </div>
+    <section class='block'>
+      <h2>Track record</h2>
+      <div class='sub'>Average miss (kg / cm) of each formula on saved predictions whose date has passed. In use now — weight: ${using('weight')}; waist: ${using('waist')}.</div>
+      <div style='overflow-x:auto;'><table class='data'>
+        <thead><tr><th>Measure</th><th>Checked</th>${PRED_MODELS.map(m=>`<th>${m.label}</th>`).join('')}</tr></thead>
+        <tbody>${maeRow('weight','Weight')}${maeRow('waist','Waist')}</tbody>
+      </table></div>
+    </section>
+    <section class='block'>
+      <h2>Saved predictions</h2>
+      ${hist.length ? `<div style='overflow-x:auto;'><table class='data'>
+        <thead><tr><th>Made</th><th>For</th><th>Weight pred</th><th>Actual</th><th>Miss</th><th>Waist pred</th><th>Actual</th><th>Miss</th></tr></thead>
+        <tbody>${hist.map(r=>`<tr><td>${fmtDateShort(r.p.madeOn)}</td><td>${fmtDate(r.p.target)}</td>${cells(r,'weight')}${cells(r,'waist')}</tr>`).join('')}</tbody>
+      </table></div>` : `<p class='empty-note'>No predictions saved yet.</p>`}
+    </section>`;
+
+  document.getElementById('predDate').addEventListener('change', e=>{
+    if(!e.target.value) return;
+    predTargetISO = e.target.value;
+    logPrediction();
+    renderPredict();
+  });
+  document.getElementById('predBtn').addEventListener('click', ()=>{
+    logPrediction();
+    renderPredict();
+  });
+}
+
 function renderAll(){
   renderDash();
   renderToday();
   renderExercise();
   renderWeek();
   renderHistory();
+  renderPredict();
   renderSettings();
 }
 
@@ -2609,6 +2847,7 @@ function setupNav(){
       if(btn.dataset.view==='exercise') renderExercise();
       if(btn.dataset.view==='week') renderWeek();
       if(btn.dataset.view==='history') renderHistory();
+      if(btn.dataset.view==='predict') renderPredict();
       if(btn.dataset.view==='settings') renderSettings();
     });
   });
